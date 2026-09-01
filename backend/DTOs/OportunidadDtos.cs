@@ -1,0 +1,291 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace CRM.Api.DTOs;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REQUEST: Crear Oportunidad
+// ─────────────────────────────────────────────────────────────────────────────
+public class CrearOportunidadRequest
+{
+    [MaxLength(20)]
+    public string? Nit { get; set; }
+
+    [Required, MaxLength(200)]
+    public string RazonSocial { get; set; } = string.Empty;
+
+    [Required]
+    public int IdTipoCliente { get; set; }
+
+    [Required]
+    public int IdSectorEconomico { get; set; }
+
+    [MaxLength(30)]
+    public string? NumeroCotizacion { get; set; }
+
+    /// <summary>Teléfono de contacto del prospecto (campo opcional, solo modo NUEVO).</summary>
+    [MaxLength(30)]
+    public string? Telefono { get; set; }
+
+    /// <summary>Correo electrónico de contacto (campo opcional, solo modo NUEVO).</summary>
+    [MaxLength(200)]
+    public string? Correo { get; set; }
+
+    [Required]
+    public int IdConsultor { get; set; }
+
+    [Required]
+    public int IdMunicipio { get; set; }
+
+    [Required]
+    public int IdServicio { get; set; }
+
+    [Required]
+    public int IdModalidad { get; set; }
+
+    public bool EsLicitacion { get; set; } = false;
+
+    [Required, Range(1, 255)]
+    public int TiempoMeses { get; set; }
+
+    [Range(1, 12)]
+    public int? IdMesInicio { get; set; }
+
+    public DateTime? FechaInicioServicio { get; set; }
+    public DateTime? FechaFinServicio    { get; set; }
+
+    [Required]
+    public DateTime Fecha { get; set; }
+
+    [Required]
+    public int IdFaseVenta { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal ValorMensual { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal Costo { get; set; }
+
+    [MaxLength(4000)]
+    public string? Observacion { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REQUEST: Actualizar Oportunidad  [v3.2]
+// ─────────────────────────────────────────────────────────────────────────────
+public class ActualizarOportunidadRequest
+{
+    [Required]
+    public int IdOportunidad { get; set; }
+
+    [MaxLength(30)]
+    public string? NuevoNumeroCotizacion { get; set; }
+
+    public int? IdMunicipio { get; set; }
+
+    [Range(1, 12)]
+    public int? IdMesInicio { get; set; }
+
+    [Range(1, 255)]
+    public int? TiempoMeses { get; set; }
+
+    public int? IdServicio { get; set; }
+
+    [Required]
+    public int IdConsultor { get; set; }
+
+    [Required]
+    public DateTime Fecha { get; set; }
+
+    [Required]
+    public int IdFaseVenta { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal ValorMensual { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal Costo { get; set; }
+
+    [MaxLength(4000)]
+    public string? Observacion { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REQUEST: Actualizar Fase — registra movimiento + actualiza datos maestros
+//  [v3.3] Añadidos: Nit, IdServicio, IdMunicipio, IdMesInicio,
+//         FechaInicioServicio, FechaFinServicio (todos opcionales).
+// ─────────────────────────────────────────────────────────────────────────────
+public class ActualizarFaseRequest
+{
+    // ── Identificadores (al menos uno obligatorio) ────────────────────────────
+    [MaxLength(30)]
+    public string? NumeroCotizacion { get; set; }
+
+    public int? IdOportunidad { get; set; }
+
+    // ── Movimiento (siempre obligatorio) ──────────────────────────────────────
+    [Required]
+    public int IdConsultor { get; set; }
+
+    [Required]
+    public DateTime Fecha { get; set; }
+
+    [Required]
+    public int IdFaseVenta { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal ValorMensual { get; set; }
+
+    [Required, Range(0, double.MaxValue)]
+    public decimal Costo { get; set; }
+
+    [MaxLength(4000)]
+    public string? Observacion { get; set; }
+
+    // ── Datos maestros opcionales (NULL = sin cambio) ─────────────────────────
+    /// <summary>Actualiza CRM.Cliente.NIT si se proporciona.</summary>
+    [MaxLength(20)]
+    public string? Nit { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.IdServicio si se proporciona.</summary>
+    public int? IdServicio { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.IdMunicipio si se proporciona.</summary>
+    public int? IdMunicipio { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.IdMesInicio (1–12) si se proporciona.</summary>
+    [Range(1, 12)]
+    public int? IdMesInicio { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.FechaInicioServicio si se proporciona.</summary>
+    public DateTime? FechaInicioServicio { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.FechaFinServicio si se proporciona.</summary>
+    public DateTime? FechaFinServicio { get; set; }
+
+    /// <summary>Actualiza CRM.Oportunidad.TiempoMeses si se proporciona.
+    /// Obligatorio al registrar un movimiento — afecta cálculo de MontoTotal.</summary>
+    [Range(1, 255)]
+    public int? TiempoMeses { get; set; }
+
+    /// <summary>Asigna o corrige el NumeroCotizacion junto con el movimiento.
+    /// Cadena vacía = sin cambio. Integrado en el form de actualización para
+    /// evitar que el usuario lo omita al registrar un avance.</summary>
+    [MaxLength(30)]
+    public string? NuevoCotizacion { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REQUEST: Asignar / Corregir NumeroCotizacion  (restaurado v3.3)
+// ─────────────────────────────────────────────────────────────────────────────
+public class AsignarCotizacionRequest
+{
+    [Required]
+    public int IdOportunidad { get; set; }
+
+    [MaxLength(30)]
+    public string? NuevoNumeroCotizacion { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  RESPONSES
+// ─────────────────────────────────────────────────────────────────────────────
+public class ApiResponse<T>
+{
+    public bool    Success { get; set; }
+    public string? Message { get; set; }
+    public T?      Data    { get; set; }
+
+    public static ApiResponse<T> Ok(T data, string? msg = null) =>
+        new() { Success = true, Data = data, Message = msg };
+
+    public static ApiResponse<T> Fail(string msg) =>
+        new() { Success = false, Message = msg };
+}
+
+public class CrearOportunidadResponse
+{
+    public int     IdOportunidad    { get; set; }
+    public string? NumeroCotizacion { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  READ: Catálogos
+// ─────────────────────────────────────────────────────────────────────────────
+public class CatalogoItem
+{
+    public int    Id          { get; set; }
+    public string Descripcion { get; set; } = string.Empty;
+    public bool   Activo      { get; set; } = true;
+    /// <summary>Orden en el funnel — solo se popula para FaseVenta.</summary>
+    public int    OrdenFunnel { get; set; } = 0;
+}
+
+public class MesItem
+{
+    public int    IdMes  { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+}
+
+public class MunicipioItem
+{
+    public int    IdMunicipio  { get; set; }
+    public string Nombre       { get; set; } = string.Empty;
+    public string Departamento { get; set; } = string.Empty;
+    public string Region       { get; set; } = string.Empty;
+}
+
+public class ClienteItem
+{
+    public int     IdCliente            { get; set; }
+    public string? Nit                  { get; set; }
+    public string  RazonSocial          { get; set; } = string.Empty;
+    public string  SectorEconomico      { get; set; } = string.Empty;
+    public int     OportunidadesActivas { get; set; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  READ: Oportunidad vigente (VW_OportunidadesActuales)
+// ─────────────────────────────────────────────────────────────────────────────
+public class OportunidadVigenteDto
+{
+    public int      IdOportunidad           { get; set; }
+    public string?  NumeroCotizacion        { get; set; }
+    public string   ProspectoCliente        { get; set; } = string.Empty;
+    public string?  Nit                     { get; set; }
+    public string   TipoCliente             { get; set; } = string.Empty;
+    public string   Licitacion              { get; set; } = string.Empty;
+    public string   ConsultorActual         { get; set; } = string.Empty;
+    public string   SectorEconomico         { get; set; } = string.Empty;
+    public string   Region                  { get; set; } = string.Empty;
+    public string   Departamento            { get; set; } = string.Empty;
+    public string   Ciudad                  { get; set; } = string.Empty;
+    public string   Servicio                { get; set; } = string.Empty;
+    public string   ModalidadContrato       { get; set; } = string.Empty;
+    public string   FaseVenta               { get; set; } = string.Empty;
+    public int      OrdenFunnel             { get; set; }
+    public decimal  ProbabilidadVenta       { get; set; }
+    public bool     EsCierre                { get; set; }
+    public string?  TipoCierre              { get; set; }
+    public decimal  ValorMensual            { get; set; }
+    public decimal  Costo                   { get; set; }
+    public decimal  AiuAbsoluto             { get; set; }
+    public decimal  PorcentajeAiu           { get; set; }
+    public decimal  MontoTotalDuracion      { get; set; }
+    public decimal  ValorPonderado          { get; set; }
+    public int      TiempoMeses             { get; set; }
+    public int?     IdMesInicio             { get; set; }
+    public string?  MesInicio               { get; set; }
+    public int?     IdMesFin                { get; set; }
+    public string?  MesFin                  { get; set; }
+    public DateTime  FechaPrimerRegistro    { get; set; }
+    public DateTime  FechaActualizacion     { get; set; }
+    public DateTime? FechaInicioServicio    { get; set; }
+    public DateTime? FechaFinServicio       { get; set; }
+    public string    MesRegistro            { get; set; } = string.Empty;
+    public int       AnioRegistro           { get; set; }
+    public string    Trimestre              { get; set; } = string.Empty;
+    public string    MesAnio                { get; set; } = string.Empty;
+    public string?   Observacion            { get; set; }
+    public DateTime  FechaUltimoMovimiento  { get; set; }
+    public string    UsuarioUltimoMovimiento{ get; set; } = string.Empty;
+}

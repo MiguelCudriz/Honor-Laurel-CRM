@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HONOR — Pipeline &amp; Indicadores</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="16x16" href="/frontend/img/favicons/favicon-16x16.png">
+  <link rel="stylesheet" href="/frontend/estilos/estilosPipeline.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <img src="/frontend/img/logo.png" alt="Honor Servicios de Seguridad">
+  <div class="navbar-right">
+    <div class="nav-links">
+      <a class="nav-link" href="nueva-oportunidad.html"><i class="bi bi-plus-circle me-1"></i>Nueva Oportunidad</a>
+      <a class="nav-link" href="actualizar-oportunidad.html"><i class="bi bi-search me-1"></i>Actualizar / Consultar</a>
+      <a class="nav-link active" href="pipeline.html"><i class="bi bi-bar-chart-line me-1"></i>Indicadores</a>
+      <a class="nav-link" id="navLinkAdmin" href="admin-consultores.html" style="display:none"><i class="bi bi-gear me-1"></i>Admin</a>
+    </div>
+    <div class="nav-user"><i class="bi bi-person-circle"></i><span id="navUsuario">—</span></div>
+    <button class="btn-logout" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>Salir</button>
+  </div>
+</nav>
+
+<div class="main-layout">
+  <aside class="sidebar">
+    <span class="sidebar-label">Oportunidades</span>
+    <a class="sidebar-item" href="nueva-oportunidad.html"><span class="icon"><i class="bi bi-file-earmark-plus"></i></span>Nueva Oportunidad</a>
+    <a class="sidebar-item" href="actualizar-oportunidad.html"><span class="icon"><i class="bi bi-arrow-repeat"></i></span>Actualizar / Consultar</a>
+    <div class="sidebar-divider"></div>
+    <span class="sidebar-label">Administración</span>
+    <a class="sidebar-item" href="admin-consultores.html"><span class="icon"><i class="bi bi-people-fill"></i></span>Gestión Consultores</a>
+    <a class="sidebar-item" href="admin-metas.html">
+    <span class="icon"><i class="bi bi-bullseye"></i></span>Metas Comerciales
+    </a>
+    <div class="sidebar-divider"></div>
+    <span class="sidebar-label">Indicadores</span>
+    <a class="sidebar-item" href="#secKpis" onclick="scrollTo('secKpis')"><span class="icon"><i class="bi bi-speedometer2"></i></span>KPIs</a>
+    <a class="sidebar-item" href="#secFunnel" onclick="scrollTo('secFunnel')"><span class="icon"><i class="bi bi-funnel"></i></span>Funnel</a>
+    <a class="sidebar-item" href="#secConsultor" onclick="scrollTo('secConsultor')"><span class="icon"><i class="bi bi-person-badge"></i></span>Por Consultor</a>
+    <a class="sidebar-item" href="#secEvolucion" onclick="scrollTo('secEvolucion')"><span class="icon"><i class="bi bi-graph-up"></i></span>Evolución Mensual</a>
+    <a class="sidebar-item" href="#secServicio" onclick="scrollTo('secServicio')"><span class="icon"><i class="bi bi-shield-check"></i></span>Por Servicio</a>
+    <a class="sidebar-item" href="#secRegion" onclick="scrollTo('secRegion')"><span class="icon"><i class="bi bi-geo-alt"></i></span>Por Región</a>
+    <a class="sidebar-item" href="#secClientes" onclick="scrollTo('secClientes')"><span class="icon"><i class="bi bi-building"></i></span>Top Clientes</a>
+    <a class="sidebar-item" href="#secAiu" onclick="scrollTo('secAiu')"><span class="icon"><i class="bi bi-calculator"></i></span>AIU Rentabilidad</a>
+    <a class="sidebar-item" href="#secForecast" onclick="scrollTo('secForecast')"><span class="icon"><i class="bi bi-table"></i></span>Forecast MRR</a>
+  </aside>
+
+  <main class="content">
+
+    <!-- HEADER -->
+    <div class="page-header">
+      <div>
+        <h1><i class="bi bi-bar-chart-line me-2" style="color:var(--verde)"></i>Indicadores Comerciales</h1>
+        <p>Resumen ejecutivo de ventas con corte anual.</p>
+      </div>
+      <div class="anio-selector">
+        <label><i class="bi bi-calendar3 me-1"></i>Año de corte</label>
+        <select id="selectAnio" onchange="cargarTodo()"></select>
+        <span id="estadoCarga" class="estado-carga"></span>
+      </div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 1: KPIs ══════════ -->
+    <div class="sec-anchor" id="secKpis"></div>
+    <div class="sec-title"><i class="bi bi-speedometer2"></i>KPIs</div>
+    <div class="kpi-grid">
+      <div class="kpi-card azul"><div class="kpi-icon"><i class="bi bi-briefcase"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiTotal">—</div><div class="kpi-lbl">Total Oportunidades</div></div></div>
+      <div class="kpi-card verde"><div class="kpi-icon"><i class="bi bi-check-circle"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiGanadas">—</div><div class="kpi-lbl">Ganadas</div></div></div>
+      <div class="kpi-card rojo"><div class="kpi-icon"><i class="bi bi-x-circle"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiPerdidas">—</div><div class="kpi-lbl">Perdidas</div></div></div>
+      <div class="kpi-card naranja"><div class="kpi-icon"><i class="bi bi-hourglass-split"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiActivas">—</div><div class="kpi-lbl">En Proceso</div></div></div>
+      <div class="kpi-card azul-claro"><div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiValorPipeline">—</div><div class="kpi-lbl">Valor Activo<small>/mes</small></div></div></div>
+      <div class="kpi-card verde"><div class="kpi-icon"><i class="bi bi-trophy"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiValorGanado">—</div><div class="kpi-lbl">Valor Ganado<small>/mes</small></div></div></div>
+      <div class="kpi-card purpura"><div class="kpi-icon"><i class="bi bi-bullseye"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiPonderado">—</div><div class="kpi-lbl">Valor Ponderado<small>/mes</small></div></div></div>
+      <div class="kpi-card dorado"><div class="kpi-icon"><i class="bi bi-percent"></i></div><div class="kpi-body"><div class="kpi-val" id="kpiWinRate">—</div><div class="kpi-lbl">Win Rate</div></div></div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 2: FUNNEL ══════════ -->
+    <div class="sec-anchor" id="secFunnel"></div>
+    <div class="sec-title"><i class="bi bi-funnel"></i>Embudo de Oportunidades</div>
+    <div class="chart-row">
+      <!-- Embudo con botón fullscreen -->
+      <div class="chart-card grande" id="funnelCardWrap">
+        <div class="chart-card-header">
+          <span>Oportunidades por Fase</span>
+          <div class="chart-card-header-right">
+            <small id="subtFunnel"></small>
+            <button class="btn-fs-small" id="btnFunnelFs" onclick="toggleFunnelFullscreen()">
+              <i class="bi bi-fullscreen me-1"></i>Pantalla completa
+            </button>
+          </div>
+        </div>
+        <div class="funnel-wrap">
+          <div id="funnelSvg" style="width:100%;height:100%"></div>
+        </div>
+      </div>
+      <!-- Donut modalidad -->
+      <div class="chart-card chico">
+        <div class="chart-card-header"><span>Distribución por Modalidad</span></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartModalidad"></canvas></div>
+        <div id="legendModalidad" class="donut-legend"></div>
+      </div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 3: POR CONSULTOR ══════════ -->
+    <div class="sec-anchor" id="secConsultor"></div>
+    <div class="sec-title"><i class="bi bi-person-badge"></i>Indicadores por Consultor</div>
+    <div class="chart-row">
+      <div class="chart-card full">
+        <div class="chart-card-header"><span>Valor de ventas por Consultor</span></div>
+        <div class="chart-wrap" style="height:300px"><canvas id="chartConsultor"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 4: EVOLUCIÓN MENSUAL ══════════ -->
+    <div class="sec-anchor" id="secEvolucion"></div>
+    <div class="sec-title"><i class="bi bi-graph-up"></i>Evolución Mensual</div>
+    <div class="chart-row">
+      <div class="chart-card grande">
+        <div class="chart-card-header"><span>Nuevas Oportunidades por Mes</span></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="chartEvolucion"></canvas></div>
+      </div>
+      <div class="chart-card chico">
+        <div class="chart-card-header"><span>Valor Mensual (Ganado vs Nuevo)</span></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="chartEvolucionValor"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 5: POR SERVICIO — con filtro ══════════ -->
+    <div class="sec-anchor" id="secServicio"></div>
+    <div class="sec-title"><i class="bi bi-shield-check"></i>Por Servicio y Región</div>
+    <div class="chart-row">
+      <div class="chart-card media">
+        <div class="chart-card-header">
+          <span>Top 10 Servicios por Valor</span>
+          <div class="chart-card-header-right">
+            <div class="filter-group" id="filtroServicioGroup">
+              <button class="filter-btn active" data-filtro="todas"
+                onclick="setFiltro('servicio','todas')">Todas</button>
+              <button class="filter-btn" data-filtro="ganada"
+                onclick="setFiltro('servicio','ganada')">
+                <i class="bi bi-check-circle me-1"></i>Ganadas
+              </button>
+              <button class="filter-btn" data-filtro="abierta"
+                onclick="setFiltro('servicio','abierta')">
+                <i class="bi bi-hourglass-split me-1"></i>Abiertas
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:320px"><canvas id="chartServicio"></canvas></div>
+      </div>
+
+      <!-- ── REGIÓN con filtro ── -->
+      <div class="sec-anchor" id="secRegion"></div>
+      <div class="chart-card media">
+        <div class="chart-card-header">
+          <span>Ventas por Región</span>
+          <div class="chart-card-header-right">
+            <div class="filter-group" id="filtroRegionGroup">
+              <button class="filter-btn active" data-filtro="todas"
+                onclick="setFiltro('region','todas')">Todas</button>
+              <button class="filter-btn" data-filtro="ganada"
+                onclick="setFiltro('region','ganada')">
+                <i class="bi bi-check-circle me-1"></i>Ganadas
+              </button>
+              <button class="filter-btn" data-filtro="abierta"
+                onclick="setFiltro('region','abierta')">
+                <i class="bi bi-hourglass-split me-1"></i>Abiertas
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:320px"><canvas id="chartRegion"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════ SECCIÓN 6: TOP CLIENTES — con filtro ══════════ -->
+    <div class="sec-anchor" id="secClientes"></div>
+    <div class="sec-title"><i class="bi bi-building"></i>Top Clientes</div>
+    <div class="chart-row">
+      <div class="chart-card grande">
+        <div class="chart-card-header">
+          <span>Top 10 Clientes — Valor Venta</span>
+          <div class="chart-card-header-right">
+            <div class="filter-group" id="filtroClientesGroup">
+              <button class="filter-btn active" data-filtro="todas"
+                onclick="setFiltro('clientes','todas')">Todas</button>
+              <button class="filter-btn" data-filtro="ganada"
+                onclick="setFiltro('clientes','ganada')">
+                <i class="bi bi-check-circle me-1"></i>Ganadas
+              </button>
+              <button class="filter-btn" data-filtro="abierta"
+                onclick="setFiltro('clientes','abierta')">
+                <i class="bi bi-hourglass-split me-1"></i>Abiertas
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:320px"><canvas id="chartClientes"></canvas></div>
+      </div>
+      <div class="chart-card chico">
+        <div class="chart-card-header"><span>Detalle</span></div>
+        <div class="table-mini-wrap">
+          <table class="tabla-mini" id="tablaTopClientes">
+            <thead><tr><th>#</th><th>Cliente</th><th>Ops</th><th>Valor/mes</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════ SECCIÓN: ANÁLISIS DE RENTABILIDAD AIU ══════════ -->
+    <div class="sec-anchor" id="secAiu"></div>
+    <div class="sec-title">
+      <i class="bi bi-calculator"></i>Análisis de Rentabilidad / %AIU VENTA NUEVA
+      <span class="sec-badge" style="background:var(--purpura)">
+        Solo Ganadas · Nuevo &amp; Profundización
+      </span>
+    </div>
+
+    <!-- Tabla detalle mensual -->
+    <div class="table-card">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th style="text-align:right">Contratos</th>
+            <th style="text-align:right">Total Tarifa<small style="display:block;font-weight:400">(ValorMensual)</small></th>
+            <th style="text-align:right">Total Costo</th>
+            <th style="text-align:right">AIU Absoluto<small style="display:block;font-weight:400">(Tarifa−Costo)</small></th>
+            <th style="text-align:right">Total Cotización<small style="display:block;font-weight:400">(MontoTotal contrato)</small></th>
+            <th style="text-align:center">% AIU</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyAiu">
+          <tr><td colspan="7" class="loading-cell">Cargando...</td></tr>
+        </tbody>
+        <tfoot id="tfootAiu"></tfoot>
+      </table>
+    </div>
+
+    <!-- ══════════ SECCIÓN 7: FORECAST MRR ══════════ -->
+    <div class="sec-anchor" id="secForecast"></div>
+    <div class="sec-title">
+      <i class="bi bi-table"></i>Forecast — Cuadro General Exponencial de Ventas Nuevas
+      <span class="sec-badge azul" id="badgeForecastAnio">—</span>
+    </div>
+
+    <!-- KPIs del forecast -->
+    <div class="forecast-kpis">
+      <div class="fkpi azul"><div class="fkpi-val" id="fcTotalContratos">—</div><div class="fkpi-lbl">Contratos GANADOS</div></div>
+      <div class="fkpi verde"><div class="fkpi-val" id="fcGranTotal">—</div><div class="fkpi-lbl">Total Facturación en el Año</div></div>
+      <div class="fkpi azul-claro"><div class="fkpi-val" id="fcTotalFijo">—</div><div class="fkpi-lbl">Total Servicios FIJOS</div></div>
+      <div class="fkpi naranja"><div class="fkpi-val" id="fcTotalOcas">—</div><div class="fkpi-lbl">Total Servicios OCASIONALES</div></div>
+      <div class="fkpi rojo"><div class="fkpi-val" id="fcMesesPerdidos">—</div><div class="fkpi-lbl">Meses perdidos (corte anual)</div></div>
+      <div class="fkpi gris"><div class="fkpi-val" id="fcValorPerdido">—</div><div class="fkpi-lbl">Valor perdido (corte anual)</div></div>
+    </div>
+
+    <!-- TOOLBAR: Vista + Consultor + Nota tipo -->
+    <div class="forecast-toolbar">
+      <!-- Toggle FIJO / OCASIONAL / Total -->
+      <div class="forecast-toggle">
+        <button class="fc-btn active" id="btnVerTotal" onclick="toggleForecast('total')">
+          <i class="bi bi-table me-1"></i>Vista Total
+        </button>
+        <button class="fc-btn" id="btnVerFijo" onclick="toggleForecast('fijo')">
+          <i class="bi bi-building me-1"></i>Solo FIJO
+        </button>
+        <button class="fc-btn" id="btnVerOcas" onclick="toggleForecast('ocasional')">
+          <i class="bi bi-person-walking me-1"></i>Solo OCASIONAL
+        </button>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Selector de consultor -->
+      <div class="fc-consultor-wrap">
+        <label><i class="bi bi-person-badge me-1"></i>Consultor</label>
+        <select id="selectFcConsultor" onchange="onFcConsultorChange()">
+          <option value="">— Todos los consultores —</option>
+        </select>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Nota de qué tipo de clientes aplican -->
+      <div class="fc-tipo-nota">
+        <i class="bi bi-info-circle"></i>
+        Solo <strong>NUEVO</strong> &amp; <strong>PROFUNDIZACIÓN</strong>
+      </div>
+    </div>
+
+    <!-- Gráfico barras apiladas Forecast -->
+    <div class="chart-card full" style="margin-bottom:20px">
+      <div class="chart-card-header">
+        <span>Forecast — Barras apiladas por Corte Anual</span>
+        <small>Cada color = mes en que se cerró el contrato · Corte: Diciembre del año seleccionado</small>
+      </div>
+      <div class="chart-wrap" style="height:340px"><canvas id="chartForecast"></canvas></div>
+    </div>
+
+    <!-- Tabla del Forecast -->
+    <div class="forecast-table-wrap" id="forecastTableWrap">
+      <div class="forecast-table-topbar">
+        <span class="forecast-table-title"><i class="bi bi-table me-2"></i>Tabla de Cortes — Escalera Anual</span>
+        <button class="btn-fc-fs" id="btnForecastFs" onclick="toggleForecastFullscreen()">
+          <i class="bi bi-fullscreen me-1"></i>Pantalla completa
+        </button>
+      </div>
+      <div class="forecast-table-scroll">
+        <table class="forecast-table" id="forecastTable">
+          <thead id="forecastThead"></thead>
+          <tbody id="forecastTbody"></tbody>
+          <tfoot id="forecastTfoot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════════ TABLA RESUMEN: FIJO / OCASIONAL / TOTAL ══════════ -->
+    <div class="forecast-table-wrap" style="margin-bottom:32px">
+      <div class="forecast-table-topbar">
+        <span class="forecast-table-title">
+          <i class="bi bi-grid-3x3 me-2"></i>Resumen de Ventas Nuevas por Modalidad
+        </span>
+        <small style="color:var(--gris-med)">Solo el mes de origen del contrato (venta nueva)</small>
+      </div>
+      <div class="forecast-table-scroll">
+        <table class="forecast-table forecast-resumen-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:16px;width:200px">Concepto</th>
+              <th class="mes-col">ENE</th><th class="mes-col">FEB</th><th class="mes-col">MAR</th>
+              <th class="mes-col">ABR</th><th class="mes-col">MAY</th><th class="mes-col">JUN</th>
+              <th class="mes-col">JUL</th><th class="mes-col">AGO</th><th class="mes-col">SEP</th>
+              <th class="mes-col">OCT</th><th class="mes-col">NOV</th><th class="mes-col">DIC</th>
+              <th class="total-col">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody id="forecastResumenBody">
+            <tr><td colspan="14" class="loading-cell">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="forecast-nota">
+      <i class="bi bi-info-circle me-1"></i>
+      <strong>Regla de corte anual:</strong> Los contratos cuya duración se extiende más allá del
+      31 de diciembre del año seleccionado se <em>clipean</em> a diciembre. Los meses sobrantes
+      <strong>no se transfieren</strong> al año siguiente — quedan fuera del indicador de ambos años.
+      El campo "Meses perdidos" muestra el impacto total de este corte.
+      <strong>Solo se incluyen oportunidades GANADAS de tipo NUEVO y PROFUNDIZACIÓN.</strong>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════════════
+         EFECTIVIDAD DE OFERTAS
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="pipe-card" style="max-width:520px">
+      <div class="pipe-card-header">
+        <div class="pipe-card-icon"><i class="bi bi-bullseye"></i></div>
+        <div>
+          <h3>Efectividad de Ofertas</h3>
+          <p>% de ventas cerradas sobre oportunidades con probabilidad ≥ 40%</p>
+        </div>
+        <div class="efect-umbrales">
+          <span class="efect-umbral" style="background:#D93025">≤ 10% NO CUMPLE</span>
+          <span class="efect-umbral" style="background:#5CB85C">10.1–11% CUMPLE</span>
+          <span class="efect-umbral" style="background:#2A8C38">&gt;11% SUPERA</span>
+        </div>
+      </div>
+      <div class="pipe-card-body" style="padding:0">
+        <table class="efect-table">
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="efectividadBody">
+            <tr><td colspan="2" class="loading-cell">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/frontend/logicas/logicaPipeline.js"></script>
+</body>
+</html>

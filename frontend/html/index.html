@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HONOR — FORECASH · Ingreso</title>
+
+  <!-- Fuentes -->
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+
+
+  <!-- Icono Faviv -->
+  <link rel="icon" type="image/png" sizes="16x16"  href="/frontend/img/favicons/favicon-16x16.png">
+  <meta name="msapplication-TileColor" content="#ffffff">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- Estilos separados -->
+  <link rel="stylesheet" href="/frontend/estilos/estilosindex.css">
+</head>
+<body>
+
+  <!-- ── Fondo animado ────────────────────────────────────────── -->
+  <div class="bg-gradient"></div>
+  <canvas id="particleCanvas"></canvas>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="bg-lines"></div>
+
+  <!-- ── Layout principal ─────────────────────────────────────── -->
+  <div class="login-wrapper">
+
+    <!-- Panel izquierdo — Branding -->
+    <div class="panel-brand">
+      <div class="logo-wrap">
+        <img src="/frontend/img/logo.png" alt="Honor Servicios de Seguridad">
+      </div>
+      <h1>SISTEMA GESTIÓN<br>DE OPORTUNIDADES <br>FORECAST</h1>
+    </div>
+
+    <!-- Separador vertical -->
+    <div class="divider"></div>
+
+    <!-- Panel derecho — Formulario -->
+    <div class="panel-form">
+      <div class="card-login">
+
+        <h2>Bienvenido Comercial</h2>
+        <p class="subtitle">Ingresa tus credenciales para continuar</p>
+
+        <!-- Campo usuario -->
+        <div class="field">
+          <label for="usuario">Usuario</label>
+          <input
+            type="text"
+            id="usuario"
+            placeholder="Tu nombre de usuario"
+            autocomplete="username"
+            spellcheck="false"
+          >
+        </div>
+
+        <!-- Campo contraseña -->
+        <div class="field">
+          <label for="clave">Contraseña</label>
+          <input
+            type="password"
+            id="clave"
+            placeholder="••••••••"
+            autocomplete="current-password"
+          >
+        </div>
+
+        <!-- Botón ingresar -->
+        <button class="btn-login" onclick="login()">
+          Ingresar al sistema
+          <span class="btn-bar"></span>
+        </button>
+
+        <!-- Mensaje de estado (error / carga / éxito) -->
+        <div class="msg-box error" id="msgBox"></div>
+
+      </div>
+    </div>
+
+  </div><!-- /login-wrapper -->
+
+        
+  <!-- Lógica separada -->
+  <script src="/frontend/logicas/logicaindex.js"></script>
+
+</body>
+</html>

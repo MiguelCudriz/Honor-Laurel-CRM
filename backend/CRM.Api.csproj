@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CRM.Api</RootNamespace>
+    <AssemblyName>CRM.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Acceso a SQL Server -->
+    <PackageReference Include="Microsoft.Data.SqlClient"           Version="5.2.1" />
+    <!-- Dapper: micro-ORM liviano, ideal para llamadas a SPs y vistas -->
+    <PackageReference Include="Dapper"                             Version="2.1.35" />
+    <!-- Swagger / OpenAPI para documentar y probar la API -->
+    <PackageReference Include="Swashbuckle.AspNetCore"             Version="6.6.2" />
+  </ItemGroup>
+
+</Project>
