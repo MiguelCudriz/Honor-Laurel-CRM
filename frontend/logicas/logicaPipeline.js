@@ -22,16 +22,13 @@ const FUNNEL_PALETTE = [
 ];
 
 /* ── Auth guard ─────────────────────────────────────────────── */
-const usuario = sessionStorage.getItem('crm_usuario');
-const rol     = sessionStorage.getItem('crm_rol');
-if (!usuario) { window.location.href = 'index.html'; }
-document.getElementById('navUsuario').textContent = usuario;
-if (rol && rol.toUpperCase() === 'ADMIN') {
-  document.getElementById('navLinkAdmin').style.display = '';
-}
-if (!rol || rol.toUpperCase() !== 'ADMIN') {
-  window.location.href = 'nueva-oportunidad.html';
-}
+// [v5] El control de sesión y de acceso a la página lo hace guard-sesion.js
+//      (cargado antes que este archivo). Aquí solo se leen los datos ya
+//      resueltos: una sola fuente de verdad para los permisos.
+//      Indicadores ahora es visible para ADMIN y SUPERVISOR.
+const usuario = (window.CRM_SESION && window.CRM_SESION.usuario) || sessionStorage.getItem('crm_usuario');
+const rol     = (window.CRM_SESION && window.CRM_SESION.rol)     || sessionStorage.getItem('crm_rol');
+document.getElementById('navUsuario').textContent = usuario || '';
 function logout() { sessionStorage.clear(); window.location.href = 'index.html'; }
 
 /* ── Estado ──────────────────────────────────────────────────── */

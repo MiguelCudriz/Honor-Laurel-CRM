@@ -198,13 +198,15 @@ public class PipelineService
     {
         using var conn = _db.CreateConnection();
         var rows = await conn.QueryAsync(@"
+            -- [v5] ISNULL: las oportunidades creadas en fase de Contacto aún no
+            -- tienen modalidad. Sin esto se agrupaban bajo una etiqueta vacía.
             SELECT
-                ModalidadContrato AS Modalidad,
+                ISNULL(ModalidadContrato, 'SIN MODALIDAD') AS Modalidad,
                 COUNT(*)          AS Cantidad,
                 SUM(ValorMensual) AS ValorTotal
             FROM CRM.VW_OportunidadesActuales
             WHERE AnioRegistro = @Anio
-            GROUP BY ModalidadContrato
+            GROUP BY ISNULL(ModalidadContrato, 'SIN MODALIDAD')
             ORDER BY ValorTotal DESC", new { Anio = anio });
 
         var lista = rows.ToList();
@@ -322,29 +324,39 @@ public class PipelineService
                 ISNULL(IdMesInicio,
                     MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))  AS MesInicio,
                 -- MesFinClip: IdMesFin clipeado a 12 si supera el año
-                CASE
-                    WHEN IdMesFin IS NOT NULL
-                        THEN CASE WHEN IdMesFin > 12 THEN 12 ELSE IdMesFin END
-                    WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) > @Anio
-                        THEN 12
-                    WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) = @Anio
-                        THEN MONTH(FechaFinServicio) - 1   -- -1 para excluir mes parcial final
-                    ELSE
-                        CASE
-                            WHEN MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1 > 12
+                -- [v5] ISNULL exterior: TiempoMeses puede ser NULL (oportunidad
+                --      creada en fase de Contacto). Sin este blindaje el CASE
+                --      devolvía NULL y el cast (int) en C# reventaba el forecast.
+                --      Fallback = mes de inicio (contrato de 1 mes).
+                ISNULL(
+                    CASE
+                        WHEN IdMesFin IS NOT NULL
+                            THEN CASE WHEN IdMesFin > 12 THEN 12 ELSE IdMesFin END
+                        WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) > @Anio
                             THEN 12
-                            ELSE MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
-                        END
-                END AS MesFinClip,
+                        WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) = @Anio
+                            THEN MONTH(FechaFinServicio) - 1   -- -1 para excluir mes parcial final
+                        ELSE
+                            CASE
+                                WHEN MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1 > 12
+                                THEN 12
+                                ELSE MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
+                            END
+                    END,
+                    ISNULL(IdMesInicio, MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))
+                ) AS MesFinClip,
                 -- MesFinReal: para calcular meses fuera del año (perdidos)
-                CASE
-                    WHEN IdMesFin IS NOT NULL
-                        THEN IdMesFin
-                    WHEN FechaFinServicio IS NOT NULL
-                        THEN MONTH(FechaFinServicio) - 1 + (YEAR(FechaFinServicio) - @Anio) * 12
-                    ELSE
-                        MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
-                END AS MesFinReal,
+                ISNULL(
+                    CASE
+                        WHEN IdMesFin IS NOT NULL
+                            THEN IdMesFin
+                        WHEN FechaFinServicio IS NOT NULL
+                            THEN MONTH(FechaFinServicio) - 1 + (YEAR(FechaFinServicio) - @Anio) * 12
+                        ELSE
+                            MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
+                    END,
+                    ISNULL(IdMesInicio, MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))
+                ) AS MesFinReal,
                 ValorMensual,
                 ConsultorActual,
                 CASE WHEN UPPER(ModalidadContrato) LIKE 'FIJ%' THEN 1 ELSE 0 END AS EsFijo

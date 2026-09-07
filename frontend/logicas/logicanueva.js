@@ -30,14 +30,9 @@ const usuario = sessionStorage.getItem('crm_usuario');
 if (!usuario) window.location.href = 'index.html';
 document.getElementById('navUsuario').textContent = usuario;
 
-const rol = sessionStorage.getItem('crm_rol');
-if (rol && rol.toUpperCase() === 'ADMIN') {
-  ['navLinkAdmin','sidebarAdminDivider','sidebarAdminLabel','sidebarAdminItem',
-   'sidebarPipelineDivider','sidebarPipelineLabel','sidebarPipelineItem'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = '';
-  });
-}
+// [v5] La visibilidad de los enlaces del navbar/sidebar la resuelve
+//      guard-sesion.js segun la matriz PERMISOS. No duplicar reglas aqui.
+const rol = (window.CRM_SESION && window.CRM_SESION.rol) || sessionStorage.getItem('crm_rol');
 
 function logout() {
   sessionStorage.clear();
@@ -398,6 +393,19 @@ function toast(msg, tipo = 'ok') {
   Toast.fire({ icon: tipo === 'ok' ? 'success' : 'error', title: msg });
 }
 
+// [v5] Catálogo de modalidades con su tope de meses (MaxMeses viene de la BD:
+//      CRM.ModalidadContrato.MaxMeses). El límite YA NO está escrito en el JS.
+let catalogoModalidades = [];
+
+// Tope de meses de la modalidad seleccionada. null = sin límite.
+function maxMesesModalidad() {
+  const sel = document.getElementById('idModalidad');
+  const id  = parseInt(sel?.value) || 0;
+  if (!id) return null;
+  const m = catalogoModalidades.find(x => x.id === id);
+  return (m && m.maxMeses) ? m.maxMeses : null;
+}
+
 // ── CARGAR CATÁLOGOS ──────────────────────────────────────────────
 async function cargarCatalogos() {
   try {
@@ -417,6 +425,7 @@ async function cargarCatalogos() {
 
     llenarSelect('idConsultor', consultores.data, 'id', 'descripcion');
     llenarSelect('idServicio',  servicios.data,   'id', 'descripcion');
+    catalogoModalidades = modalidades.data || [];
     llenarSelect('idModalidad', modalidades.data, 'id', 'descripcion');
 
     const fasesFiltradas = (fases.data || []).filter(f =>
@@ -447,12 +456,12 @@ async function cargarCatalogos() {
 
 // ── LIMITAR MESES SEGÚN MODALIDAD ────────────────────────────────
 function aplicarLimiteMeses() {
-  const sel    = document.getElementById('idModalidad');
-  const desc   = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
-  const esOcas = desc.includes('OCASIONAL');
-  const maxMes = esOcas ? 1 : 72;
-  const input  = document.getElementById('tiempoMeses');
-  input.max    = maxMes;
+  const sel      = document.getElementById('idModalidad');
+  const descMod  = sel.options[sel.selectedIndex]?.text || '';
+  const tope     = maxMesesModalidad();      // null = sin límite
+  const maxMes   = tope || 72;               // 72 = tope técnico del formulario
+  const input    = document.getElementById('tiempoMeses');
+  input.max      = maxMes;
 
   const actual = parseInt(input.value) || 0;
   if (actual > maxMes) {
@@ -460,12 +469,13 @@ function aplicarLimiteMeses() {
     calcularAIU();
     calcularFechaFinServicio();
     calcularMesFinServicio();
-    toast(`Modalidad OCASIONAL: máximo ${maxMes} meses permitidos.`, 'err');
+    toast(`Modalidad ${descMod.trim()}: máximo ${maxMes} meses permitidos.`, 'err');
   }
 
   const hint = document.querySelector('#tiempoMeses + .hint');
   if (hint) {
-    hint.innerHTML = `<i class="bi bi-info-circle me-1"></i>Máximo ${maxMes} meses${esOcas ? ' (modalidad Ocasional)' : ''}`;
+    hint.innerHTML = `<i class="bi bi-info-circle me-1"></i>Máximo ${maxMes} meses` +
+                     (tope ? ` (modalidad ${descMod.trim()})` : '');
   }
 }
 
@@ -592,9 +602,7 @@ document.getElementById('mesInicioServicio').addEventListener('change', function
 });
 
 document.getElementById('tiempoMeses').addEventListener('input', function () {
-  const sel    = document.getElementById('idModalidad');
-  const desc   = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
-  const maxMes = desc.includes('OCASIONAL') ? 1 : 72;
+  const maxMes = maxMesesModalidad() || 72;   // [v5] tope leído del catálogo
 
   if (parseInt(this.value) > maxMes) {
     this.value = maxMes;
@@ -891,9 +899,7 @@ function limpiarFormulario() {
   fechaEl.valueAsDate = new Date();
   fechaEl.readOnly    = true;
 
-  const hint = document.querySelector('#tiempoMeses + .hint');
-  if (hint) hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Máximo 72 meses';
-  document.getElementById('tiempoMeses').max = 72;
+  aplicarLimiteMeses();   // [v5] restablece el tope segun la modalidad activa
 
   calcularAIU();
   marcarPaso(1);

@@ -48,18 +48,31 @@ public class OportunidadService
             "SELECT IdServicio AS Id, Nombre AS Descripcion, Activo FROM CRM.Servicio WHERE Activo = 1 ORDER BY Nombre");
     }
 
+    /// <summary>
+    /// [v5] Devuelve también MaxMeses: el tope de duración de cada modalidad
+    /// (OCASIONAL = 3, resto NULL = sin límite). El frontend toma el límite
+    /// de aquí en vez de tenerlo escrito a mano en el JS.
+    /// </summary>
     public async Task<IEnumerable<CatalogoItem>> GetModalidadesAsync()
     {
         using var conn = _db.CreateConnection();
-        return await conn.QueryAsync<CatalogoItem>(
-            "SELECT IdModalidad AS Id, Descripcion, Activo FROM CRM.ModalidadContrato WHERE Activo = 1 ORDER BY Descripcion");
+        return await conn.QueryAsync<CatalogoItem>(@"
+            SELECT IdModalidad AS Id, Descripcion, Activo, MaxMeses
+            FROM   CRM.ModalidadContrato
+            WHERE  Activo = 1
+            ORDER  BY Descripcion");
     }
 
+    /// <summary>
+    /// [v5] Devuelve también RequiereDatosComerciales, para que el formulario
+    /// sepa qué campos volver obligatorios sin duplicar la regla en el JS.
+    /// </summary>
     public async Task<IEnumerable<CatalogoItem>> GetFasesVentaAsync()
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync<CatalogoItem>(@"
-            SELECT IdFaseVenta AS Id, Descripcion, Activo, OrdenFunnel
+            SELECT IdFaseVenta AS Id, Descripcion, Activo, OrdenFunnel,
+                   RequiereDatosComerciales
             FROM   CRM.FaseVenta
             WHERE  Activo = 1
             ORDER  BY OrdenFunnel");

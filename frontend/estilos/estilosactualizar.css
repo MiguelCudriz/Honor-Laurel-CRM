@@ -126,9 +126,38 @@ body { font-family:'Barlow',sans-serif; background:var(--gris-suave); color:var(
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── TABLA GRILLA ────────────────────────────────────── */
+
+/* [v5] Contenedor con scroll horizontal Y vertical.
+   Antes la tabla se salía del recuadro y .card{overflow:hidden} la recortaba,
+   dejando columnas inalcanzables. Ahora el scroll vive en el wrapper:
+   · overflow:auto   → aparecen las dos barras cuando hacen falta
+   · max-height      → la lista no crece indefinidamente con muchos registros
+   · min-width en la tabla → fuerza el scroll lateral en vez de comprimir
+                             las columnas hasta hacerlas ilegibles
+   · thead sticky    → el encabezado queda fijo al bajar por la lista */
+#grillaWrap {
+  overflow: auto;
+  max-height: 62vh;
+  border: 1px solid var(--gris-borde);
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Barras de desplazamiento discretas y visibles */
+#grillaWrap::-webkit-scrollbar { width: 10px; height: 10px; }
+#grillaWrap::-webkit-scrollbar-track { background: var(--gris-suave); border-radius: 8px; }
+#grillaWrap::-webkit-scrollbar-thumb {
+  background: #C5CFDF; border-radius: 8px; border: 2px solid var(--gris-suave);
+}
+#grillaWrap::-webkit-scrollbar-thumb:hover { background: #A7B5CC; }
+#grillaWrap::-webkit-scrollbar-corner { background: var(--gris-suave); }
+#grillaWrap { scrollbar-width: thin; scrollbar-color: #C5CFDF var(--gris-suave); }
+
 .grilla-tabla {
   width: 100%; border-collapse: collapse;
   font-size: 0.88rem;
+  min-width: 980px;          /* [v5] dispara el scroll horizontal */
 }
 .grilla-tabla thead tr {
   background: var(--gris-suave);
@@ -139,6 +168,10 @@ body { font-family:'Barlow',sans-serif; background:var(--gris-suave); color:var(
   font-size: 0.7rem; font-weight: 700;
   letter-spacing: 0.09em; text-transform: uppercase;
   color: #8896B0; white-space: nowrap;
+  position: sticky;          /* [v5] encabezado fijo al hacer scroll vertical */
+  top: 0; z-index: 3;
+  background: var(--gris-suave);
+  box-shadow: inset 0 -2px 0 var(--gris-borde);
 }
 .grilla-tabla th:first-child { border-radius: 8px 0 0 0; }
 .grilla-tabla th:last-child  { border-radius: 0 8px 0 0; }
@@ -304,3 +337,21 @@ body { font-family:'Barlow',sans-serif; background:var(--gris-suave); color:var(
 .funnel-track { height:8px; background:var(--gris-borde); border-radius:4px; overflow:hidden; }
 .funnel-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--azul),var(--verde)); transition:width 0.6s ease; }
 .funnel-labels { display:flex; justify-content:space-between; font-size:0.72rem; color:#8896B0; margin-top:4px; }
+
+/* ── [v5] RESPONSIVE / DESBORDES ─────────────────────────
+   Evita que el contenido "rompa" el recuadro en pantallas
+   pequeñas o con muchos datos. */
+@media (max-width: 1200px) {
+  .info-grid { grid-template-columns: 1fr 1fr; }
+  .kpi-row   { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 760px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .kpi-row   { grid-template-columns: 1fr; }
+  .content   { padding: 24px 18px; }
+  #grillaWrap { max-height: 70vh; }
+}
+
+/* Textos largos (razón social, observación) no empujan el ancho */
+.info-item .val { overflow-wrap: anywhere; }
+.timeline-card  { overflow-wrap: anywhere; }

@@ -186,22 +186,9 @@ public class OportunidadController : ControllerBase
                 routeValues,
                 ApiResponse<CrearOportunidadResponse>.Ok(response, "Oportunidad creada exitosamente."));
         }
-        catch (SqlException ex) when (ex.Number == 50011)
-        {
-            return Conflict(ApiResponse<object>.Fail("El NumeroCotizacion ya existe."));
-        }
-        catch (SqlException ex) when (ex.Number == 50014)
-        {
-            return BadRequest(ApiResponse<object>.Fail("El Costo no puede ser igual o superar el ValorMensual."));
-        }
-        catch (SqlException ex) when (ex.Number == 50015)
-        {
-            return BadRequest(ApiResponse<object>.Fail("TiempoMeses es obligatorio y debe ser mayor a 0."));
-        }
         catch (SqlException ex)
         {
-            _logger.LogError(ex, "Error SQL al crear oportunidad");
-            return StatusCode(500, ApiResponse<object>.Fail($"Error de base de datos: {ex.Message}"));
+            return MapearErrorSql(ex, "al crear oportunidad");
         }
     }
 
@@ -239,42 +226,9 @@ public class OportunidadController : ControllerBase
                 },
                 "Fase actualizada correctamente."));
         }
-        catch (SqlException ex) when (ex.Number == 50001)
-        {
-            return NotFound(ApiResponse<object>.Fail("Oportunidad no encontrada o inactiva."));
-        }
-        catch (SqlException ex) when (ex.Number == 50003)
-        {
-            return Conflict(ApiResponse<object>.Fail("Ya existe un movimiento idéntico (misma fase, fecha y valores) para esta oportunidad."));
-        }
-        catch (SqlException ex) when (ex.Number == 50011)
-        {
-            return Conflict(ApiResponse<object>.Fail("El NumeroCotizacion ya existe en otra oportunidad."));
-        }
-        catch (SqlException ex) when (ex.Number == 50015)
-        {
-            return BadRequest(ApiResponse<object>.Fail("TiempoMeses debe ser mayor a 0."));
-        }
-        catch (SqlException ex) when (ex.Number == 50030)
-        {
-            return Conflict(ApiResponse<object>.Fail("El NIT ingresado ya pertenece a otro cliente registrado."));
-        }
-        catch (SqlException ex) when (ex.Number == 50050)
-        {
-            return Conflict(ApiResponse<object>.Fail("No se puede retroceder de fase. Solo se permite avanzar o corregir la misma fase vigente."));
-        }
-        catch (SqlException ex) when (ex.Number == 50014)
-        {
-            return BadRequest(ApiResponse<object>.Fail("El Costo no puede ser igual o superar el ValorMensual."));
-        }
-        catch (SqlException ex) when (ex.Number == 50020)
-        {
-            return BadRequest(ApiResponse<object>.Fail("Debe informar IdOportunidad o NumeroCotizacion."));
-        }
         catch (SqlException ex)
         {
-            _logger.LogError(ex, "Error SQL al actualizar fase");
-            return StatusCode(500, ApiResponse<object>.Fail($"Error de base de datos: {ex.Message}"));
+            return MapearErrorSql(ex, "al actualizar fase");
         }
     }
 
@@ -309,30 +263,9 @@ public class OportunidadController : ControllerBase
                 new { req.IdOportunidad },
                 "Oportunidad actualizada correctamente."));
         }
-        catch (SqlException ex) when (ex.Number == 50001)
-        {
-            return NotFound(ApiResponse<object>.Fail("Oportunidad no encontrada o inactiva."));
-        }
-        catch (SqlException ex) when (ex.Number == 50003)
-        {
-            return Conflict(ApiResponse<object>.Fail("Ya existe un movimiento con la misma fase y fecha."));
-        }
-        catch (SqlException ex) when (ex.Number == 50011)
-        {
-            return Conflict(ApiResponse<object>.Fail("El NumeroCotizacion ya existe en otra oportunidad."));
-        }
-        catch (SqlException ex) when (ex.Number == 50014)
-        {
-            return BadRequest(ApiResponse<object>.Fail("El Costo no puede ser igual o superar el ValorMensual."));
-        }
-        catch (SqlException ex) when (ex.Number == 50015)
-        {
-            return BadRequest(ApiResponse<object>.Fail("TiempoMeses debe ser mayor a 0."));
-        }
         catch (SqlException ex)
         {
-            _logger.LogError(ex, "Error SQL al actualizar oportunidad");
-            return StatusCode(500, ApiResponse<object>.Fail($"Error de base de datos: {ex.Message}"));
+            return MapearErrorSql(ex, "al actualizar oportunidad");
         }
     }
     /// <summary>
@@ -359,17 +292,54 @@ public class OportunidadController : ControllerBase
                 new { req.IdOportunidad, NuevoNumeroCotizacion = req.NuevoNumeroCotizacion?.ToUpper().Trim() },
                 "Número de cotización actualizado correctamente."));
         }
-        catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
-        {
-            // Violación de índice único UX_Oportunidad_NumeroCotizacion
-            return Conflict(ApiResponse<object>.Fail("El NumeroCotizacion ya existe en otra oportunidad."));
-        }
         catch (SqlException ex)
         {
-            _logger.LogError(ex, "Error SQL al asignar número de cotización");
-            return StatusCode(500, ApiResponse<object>.Fail($"Error de base de datos: {ex.Message}"));
+            return MapearErrorSql(ex, "al asignar número de cotización");
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    //  [v5] MAPEO CENTRALIZADO DE ERRORES SQL
+    //
+    //  Una sola tabla en vez de repetir cadenas de catch en cada endpoint.
+    //  Para agregar un código nuevo basta con añadir una línea aquí.
+    //  Mensaje vacío ("") = usar el texto que envía el SP, porque ya viene
+    //  redactado para el usuario y es dinámico (ej. 50016 incluye el nombre
+    //  de la modalidad y su tope de meses).
+    // ─────────────────────────────────────────────────────────────────────────
+    private static readonly IReadOnlyDictionary<int, (int Status, string Mensaje)> ErroresSql =
+        new Dictionary<int, (int, string)>
+        {
+            [50001] = (StatusCodes.Status404NotFound, "Oportunidad no encontrada o inactiva."),
+            [50002] = (StatusCodes.Status400BadRequest, "La fecha indicada no existe en el calendario del sistema (DimFecha)."),
+            [50003] = (StatusCodes.Status409Conflict, "Ya existe un movimiento idéntico (misma fase, fecha y valores) para esta oportunidad."),
+            [50011] = (StatusCodes.Status409Conflict, "El N° de cotización ya existe en otra oportunidad."),
+            [50012] = (StatusCodes.Status400BadRequest, "El Valor Mensual no puede ser negativo."),
+            [50013] = (StatusCodes.Status400BadRequest, "El Costo no puede ser negativo."),
+            [50014] = (StatusCodes.Status400BadRequest, "El Costo no puede ser igual o superar el Valor Mensual."),
+            [50015] = (StatusCodes.Status400BadRequest, "El Tiempo (meses) debe ser mayor a 0."),
+            [50016] = (StatusCodes.Status400BadRequest, ""),   // tope de meses por modalidad (mensaje del SP)
+            [50017] = (StatusCodes.Status400BadRequest, ""),   // faltan datos comerciales para la fase
+            [50018] = (StatusCodes.Status400BadRequest, ""),   // la fase exige Valor Mensual > 0
+            [50019] = (StatusCodes.Status400BadRequest, "No se puede registrar un Costo si el Valor Mensual es 0."),
+            [50020] = (StatusCodes.Status400BadRequest, "Debe informar el Id de la oportunidad o su N° de cotización."),
+            [50030] = (StatusCodes.Status409Conflict, "El NIT ingresado ya pertenece a otro cliente registrado."),
+            [50050] = (StatusCodes.Status409Conflict, "No se puede retroceder de fase. Solo se permite avanzar o corregir la fase vigente."),
+            [2627]  = (StatusCodes.Status409Conflict, "El N° de cotización ya existe en otra oportunidad."),
+            [2601]  = (StatusCodes.Status409Conflict, "El N° de cotización ya existe en otra oportunidad."),
+        };
 
+    private IActionResult MapearErrorSql(SqlException ex, string contexto)
+    {
+        if (ErroresSql.TryGetValue(ex.Number, out var e))
+        {
+            var mensaje = string.IsNullOrWhiteSpace(e.Mensaje) ? ex.Message : e.Mensaje;
+            _logger.LogWarning("Regla de negocio {Num} {Contexto}: {Msg}", ex.Number, contexto, mensaje);
+            return StatusCode(e.Status, ApiResponse<object>.Fail(mensaje));
+        }
+
+        _logger.LogError(ex, "Error SQL {Contexto}", contexto);
+        return StatusCode(StatusCodes.Status500InternalServerError,
+            ApiResponse<object>.Fail($"Error de base de datos: {ex.Message}"));
+    }
 }

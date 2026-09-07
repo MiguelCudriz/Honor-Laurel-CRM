@@ -234,8 +234,23 @@ public class CatalogoItem
     public int    Id          { get; set; }
     public string Descripcion { get; set; } = string.Empty;
     public bool   Activo      { get; set; } = true;
+
     /// <summary>Orden en el funnel — solo se popula para FaseVenta.</summary>
     public int    OrdenFunnel { get; set; } = 0;
+
+    /// <summary>
+    /// [v5] Máximo de meses permitido — solo se popula para ModalidadContrato.
+    /// NULL = sin límite. La regla vive en la BD (CRM.ModalidadContrato.MaxMeses),
+    /// NO en el frontend: cambiarla es un UPDATE de una fila.
+    /// </summary>
+    public int?   MaxMeses    { get; set; }
+
+    /// <summary>
+    /// [v5] Indica si la fase exige datos comerciales completos (modalidad,
+    /// tiempo, mes de inicio, fecha de inicio y valor &gt; 0).
+    /// Solo se popula para FaseVenta.
+    /// </summary>
+    public bool   RequiereDatosComerciales { get; set; } = false;
 }
 
 public class MesItem
@@ -270,17 +285,43 @@ public class OportunidadVigenteDto
     public string?  NumeroCotizacion        { get; set; }
     public string   ProspectoCliente        { get; set; } = string.Empty;
     public string?  Nit                     { get; set; }
-    public string   TipoCliente             { get; set; } = string.Empty;
+
+    // ── [v5] Ids crudos: permiten al frontend preseleccionar los <select>
+    //         por Id en vez de comparar por texto (frágil ante tildes/mayúsculas).
+    public int?     IdTipoCliente           { get; set; }
+    public int?     IdConsultorActual       { get; set; }
+    public int?     IdSectorEconomico       { get; set; }
+    public int?     IdMunicipio             { get; set; }
+    public int?     IdServicio              { get; set; }
+    public int?     IdModalidad             { get; set; }
+    public int?     IdFaseVenta             { get; set; }
+
+    public string?  TipoCliente             { get; set; }
+    public bool     EsLicitacion            { get; set; }
     public string   Licitacion              { get; set; } = string.Empty;
     public string   ConsultorActual         { get; set; } = string.Empty;
-    public string   SectorEconomico         { get; set; } = string.Empty;
-    public string   Region                  { get; set; } = string.Empty;
-    public string   Departamento            { get; set; } = string.Empty;
-    public string   Ciudad                  { get; set; } = string.Empty;
-    public string   Servicio                { get; set; } = string.Empty;
-    public string   ModalidadContrato       { get; set; } = string.Empty;
+    public string?  SectorEconomico         { get; set; }
+    public string?  Region                  { get; set; }
+    public string?  Departamento            { get; set; }
+    public string?  Ciudad                  { get; set; }
+    public string?  Servicio                { get; set; }
+
+    /// <summary>[v5] NULL cuando la oportunidad aún no tiene modalidad
+    /// (creada en fase de Contacto). El frontend muestra "Sin asignar".</summary>
+    public string?  ModalidadContrato       { get; set; }
+
+    /// <summary>[v5] Tope de meses de la modalidad (NULL = sin límite).</summary>
+    public int?     ModalidadMaxMeses       { get; set; }
+
     public string   FaseVenta               { get; set; } = string.Empty;
     public int      OrdenFunnel             { get; set; }
+
+    /// <summary>[v5] La fase vigente exige datos comerciales completos.</summary>
+    public bool     RequiereDatosComerciales { get; set; }
+
+    /// <summary>[v5] 0 = falta diligenciar modalidad / tiempo / mes / fecha de inicio.</summary>
+    public bool     DatosCompletos          { get; set; }
+
     public decimal  ProbabilidadVenta       { get; set; }
     public bool     EsCierre                { get; set; }
     public string?  TipoCierre              { get; set; }
@@ -290,7 +331,15 @@ public class OportunidadVigenteDto
     public decimal  PorcentajeAiu           { get; set; }
     public decimal  MontoTotalDuracion      { get; set; }
     public decimal  ValorPonderado          { get; set; }
-    public int      TiempoMeses             { get; set; }
+
+    /// <summary>
+    /// [v5] NULLABLE — obligatorio. Desde el parche de fases, una oportunidad
+    /// creada en CONTACTO E-MAIL / TELEFONICO no tiene duración pactada.
+    /// Si esta propiedad fuera 'int', Dapper lanzaría
+    /// "Error parsing column (TiempoMeses)" y TUMBARÍA LA GRILLA COMPLETA.
+    /// </summary>
+    public int?     TiempoMeses             { get; set; }
+
     public int?     IdMesInicio             { get; set; }
     public string?  MesInicio               { get; set; }
     public int?     IdMesFin                { get; set; }

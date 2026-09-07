@@ -243,7 +243,7 @@
               <label><i class="bi bi-calendar-range"></i> Tiempo (meses) <span class="req">✦</span></label>
               <input type="number" id="upTiempoMeses" min="1" max="72" placeholder="Ej: 12"
                      oninput="calcularMesFinActualizar();calcularFechaFinActualizar()">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Obligatorio · actualiza la duración del contrato</span>
+              <span class="hint" id="upHintTiempoMeses"><i class="bi bi-info-circle me-1"></i>Obligatorio · actualiza la duración del contrato</span>
             </div>
 
             <!-- NIT del cliente -->
@@ -369,6 +369,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/frontend/logicas/guard-sesion.js"></script>
 <script src="/frontend/logicas/logicaactualizar.js"></script>
 </body>
 </html>

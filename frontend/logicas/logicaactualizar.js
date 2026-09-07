@@ -9,6 +9,7 @@ const API = 'http://localhost:5000/api';
 let cotizacionActiva      = null;
 let idOportunidadActiva   = null;
 let tiempoMesesActiva      = 0;
+let idModalidadActiva      = 0;   // [v5] modalidad vigente de la oportunidad abierta
 let catalogoFases          = [];
 let ordenFaseActiva        = 0;   // OrdenFunnel de la fase vigente
 let idFaseActiva           = 0;   // IdFaseVenta vigente
@@ -28,17 +29,13 @@ const usuario = sessionStorage.getItem('crm_usuario');
 if (!usuario) window.location.href = 'index.html';
 document.getElementById('navUsuario').textContent = usuario;
 
-const rol = (sessionStorage.getItem('crm_rol') || '').toUpperCase();
+// [v5] La visibilidad de los enlaces del navbar/sidebar la resuelve
+//      guard-sesion.js segun la matriz PERMISOS. No duplicar reglas aqui.
+const rol = (window.CRM_SESION && window.CRM_SESION.rol) ||
+            (sessionStorage.getItem('crm_rol') || '').toUpperCase();
 const esAdmin      = rol === 'ADMIN';
 const esSupervisor = rol === 'SUPERVISOR';
 const verTodos     = esAdmin || esSupervisor;
-
-if (esAdmin) {
-  ['navLinkAdmin','sidebarAdminDivider','sidebarAdminLabel','sidebarAdminItem',
-   'sidebarPipelineDivider','sidebarPipelineLabel','sidebarPipelineItem'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display = '';
-  });
-}
 
 // Ocultar columna Consultor para CONSULTOR normal
 if (!verTodos) {
@@ -209,8 +206,12 @@ async function cargarCatalogos() {
     const elTM = document.getElementById('upTiempoMeses');
     if (elTM) {
       elTM.addEventListener('input', function () {
+        const maxMes = maxMesesModalidadUp() || 72;   // [v5] tope del catálogo
         const v = parseInt(this.value) || 0;
-        if (v > 72) { this.value = 72; }
+        if (v > maxMes) {
+          this.value = maxMes;
+          toast(`Máximo ${maxMes} meses para esta modalidad.`, 'err');
+        }
         if (v < 1 && this.value !== '') { this.value = 1; }
         tiempoMesesActiva = parseInt(this.value) || 0;
         calcularMesFinActualizar();
@@ -218,7 +219,48 @@ async function cargarCatalogos() {
       });
     }
 
+    // [v5] Al cambiar la modalidad se reajusta el tope de meses al vuelo.
+    const elMod = document.getElementById('upIdModalidad');
+    if (elMod) elMod.addEventListener('change', () => aplicarLimiteMesesUp(true));
+
   } catch (e) { toast('Error cargando catálogos.', 'err'); }
+}
+
+// ── [v5] TOPE DE MESES SEGÚN MODALIDAD ─────────────────────────────────
+// El límite vive en la BD (CRM.ModalidadContrato.MaxMeses) y llega en el
+// catálogo. Aquí no hay ningún número de meses escrito a mano.
+function maxMesesModalidadUp() {
+  const sel = document.getElementById('upIdModalidad');
+  const id  = parseInt(sel?.value) || 0;
+
+  // Si el usuario no cambió la modalidad, se usa la que ya tiene la oportunidad.
+  const idEfectivo = id || idModalidadActiva;
+  if (!idEfectivo) return null;
+
+  const m = catalogoModalidades.find(x => x.id === idEfectivo);
+  return (m && m.maxMeses) ? m.maxMeses : null;
+}
+
+function aplicarLimiteMesesUp(avisar = false) {
+  const tope   = maxMesesModalidadUp();
+  const maxMes = tope || 72;
+  const input  = document.getElementById('upTiempoMeses');
+  if (!input) return;
+
+  input.max = maxMes;
+
+  if ((parseInt(input.value) || 0) > maxMes) {
+    input.value       = maxMes;
+    tiempoMesesActiva = maxMes;
+    calcularMesFinActualizar();
+    calcularFechaFinActualizar();
+    if (avisar) toast(`Máximo ${maxMes} meses para esta modalidad.`, 'err');
+  }
+
+  const hint = document.getElementById('upHintTiempoMeses');
+  if (hint) {
+    hint.innerHTML = `<i class="bi bi-info-circle me-1"></i>Máximo ${maxMes} meses`;
+  }
 }
 
 // ── FILTRO MUNICIPIO (formulario actualizar) ────────────────────────────
@@ -395,6 +437,7 @@ function volverAGrilla() {
   cotizacionActiva    = null;
   idOportunidadActiva = null;
   tiempoMesesActiva   = 0;
+  idModalidadActiva   = 0;
   ordenFaseActiva     = 0;
   idFaseActiva        = 0;
   limpiarFormActualizar();
@@ -573,23 +616,25 @@ function mostrarDetalle(data) {
     if (matchServicio) selServ.value = matchServicio.value;
   }
 
-  // Pre-llenar modalidad (por texto — la cabecera no expone IdModalidad directamente).
-  // Si la oportunidad aún no tiene modalidad (fase de Contacto), queda en
-  // "Sin cambio" y se resalta el hint invitando a completarla.
-  const selModal = document.getElementById('upIdModalidad');
+  // [v5] Pre-llenar modalidad por Id (la vista ya expone idModalidad).
+  //      Antes se comparaba por texto, lo que fallaba con tildes o mayúsculas.
+  idModalidadActiva = parseInt(cab.idModalidad || 0) || 0;
+
+  const selModal  = document.getElementById('upIdModalidad');
   const hintModal = document.getElementById('upHintModalidad');
   if (selModal) {
     selModal.selectedIndex = 0;
-    if (cab.modalidadContrato) {
-      const matchModal = Array.from(selModal.options).find(
-        o => normalizarTexto(o.textContent) === normalizarTexto(cab.modalidadContrato)
-      );
-      if (matchModal) selModal.value = matchModal.value;
+    if (idModalidadActiva) {
+      const opt = Array.from(selModal.options).find(o => parseInt(o.value) === idModalidadActiva);
+      if (opt) selModal.value = opt.value;
       if (hintModal) hintModal.innerHTML = '<i class="bi bi-info-circle me-1"></i>Opcional · selecciona solo si deseas cambiarla';
     } else if (hintModal) {
       hintModal.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Esta oportunidad no tiene modalidad asignada — selecciónala si ya se conoce';
     }
   }
+
+  // Ajusta el tope de meses a la modalidad de esta oportunidad.
+  aplicarLimiteMesesUp();
 
   // Pre-llenar mes inicio (usa idMesInicio del cabecera — expuesto por la view)
   const mesIni = parseInt(cab.idMesInicio || cab.mesInicioServicio || 0);

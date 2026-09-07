@@ -5,10 +5,10 @@
 const API = 'http://localhost:5000/api';
 
 // ── Auth guard (solo ADMIN) ───────────────────────────────────────
-const sesionUsuario  = sessionStorage.getItem('crm_usuario');
-const sesionRol      = (sessionStorage.getItem('crm_rol') || '').toUpperCase();
-if (!sesionUsuario)           window.location.href = 'index.html';
-if (sesionRol !== 'ADMIN')    window.location.href = 'nueva-oportunidad.html';
+// [v5] El bloqueo por rol lo aplica guard-sesion.js antes de cargar este
+//      archivo (matriz PERMISOS). Aquí solo se leen los datos de sesión.
+const sesionUsuario  = (window.CRM_SESION && window.CRM_SESION.usuario) || sessionStorage.getItem('crm_usuario');
+const sesionRol      = (window.CRM_SESION && window.CRM_SESION.rol)     || (sessionStorage.getItem('crm_rol') || '').toUpperCase();
 
 document.getElementById('navUsuario').textContent  = sesionUsuario;
 document.getElementById('navRolBadge').textContent = sessionStorage.getItem('crm_rol') || '—';
