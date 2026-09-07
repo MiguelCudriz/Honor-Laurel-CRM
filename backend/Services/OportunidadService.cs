@@ -163,6 +163,8 @@ public class OportunidadService
     /// en una transacción atómica vía SP_CrearOportunidad.
     /// [v3.2] Añadido parámetro @IdMesInicio.
     /// [v3.2] Eliminado @FechaCierreEstimada.
+    /// [v3.4] @IdModalidad y @TiempoMeses ahora son opcionales (NULL permitido
+    ///        en fases de Contacto — Email/Telefónico).
     /// </summary>
     public async Task<CrearOportunidadResponse> CrearOportunidadAsync(
         CrearOportunidadRequest req, string usuario)
@@ -181,19 +183,20 @@ public class OportunidadService
         p.Add("@IdConsultor",         req.IdConsultor,         DbType.Int16);
         p.Add("@IdMunicipio",         req.IdMunicipio,         DbType.Int32);
         p.Add("@IdServicio",          req.IdServicio,          DbType.Int16);
-        p.Add("@IdModalidad",         req.IdModalidad,         DbType.Byte);
+        p.Add("@IdModalidad",         req.IdModalidad,         DbType.Byte);    // [v3.4] nullable
         p.Add("@IdTipoCliente",       req.IdTipoCliente,       DbType.Byte);
         p.Add("@EsLicitacion",        req.EsLicitacion,        DbType.Boolean);
-        p.Add("@TiempoMeses",         req.TiempoMeses,         DbType.Byte);
+        p.Add("@TiempoMeses",         req.TiempoMeses,         DbType.Byte);    // [v3.4] nullable
         p.Add("@IdMesInicio",         req.IdMesInicio,         DbType.Byte);    // [v3.2]
         p.Add("@FechaInicioServicio", req.FechaInicioServicio, DbType.Date);
         p.Add("@FechaFinServicio",    req.FechaFinServicio,    DbType.Date);
-        // @FechaCierreEstimada eliminado [v3.2]
         p.Add("@Fecha",               req.Fecha.Date,          DbType.Date);
         p.Add("@IdFaseVenta",         req.IdFaseVenta,         DbType.Byte);
         p.Add("@ValorMensual",        req.ValorMensual,        DbType.Decimal);
         p.Add("@Costo",               req.Costo,               DbType.Decimal);
         p.Add("@Observacion",         req.Observacion,         DbType.String);
+        p.Add("@Telefono",            req.Telefono,             DbType.String);
+        p.Add("@Correo",              req.Correo,               DbType.String);
         p.Add("@IdOportunidadOut",    dbType: DbType.Int32,    direction: ParameterDirection.Output);
 
         await conn.ExecuteAsync("CRM.SP_CrearOportunidad", p, commandType: CommandType.StoredProcedure);
@@ -201,8 +204,8 @@ public class OportunidadService
         var idGenerado = p.Get<int>("@IdOportunidadOut");
 
         _logger.LogInformation(
-            "Oportunidad creada: Id={Id} / Cotización={Cot} / MesInicio={Mi} / Usuario={U}",
-            idGenerado, numeroCot ?? "(sin cotización)", req.IdMesInicio, usuario);
+            "Oportunidad creada: Id={Id} / Cotización={Cot} / Fase={Fase} / MesInicio={Mi} / Usuario={U}",
+            idGenerado, numeroCot ?? "(sin cotización)", req.IdFaseVenta, req.IdMesInicio, usuario);
 
         return new CrearOportunidadResponse
         {
@@ -247,14 +250,12 @@ public class OportunidadService
     }
 
     /// <summary>
-    /// Registra solo un movimiento de pipeline sobre una oportunidad existente.
-    /// Identificación por NumeroCotizacion O IdOportunidad (al menos uno).
-    /// </summary>
-    /// <summary>
     /// [v3.3] Registra un movimiento de pipeline Y actualiza datos maestros opcionales
     /// (Nit, IdServicio, IdMunicipio, IdMesInicio, FechaInicioServicio, FechaFinServicio).
+    /// [v3.4] Añadido IdModalidad opcional — permite completar la modalidad de
+    /// oportunidades creadas en fase de Contacto (sin modalidad asignada).
     /// Todos los campos maestros son opcionales: NULL = sin cambio.
-    /// Llama a CRM.SP_ActualizarFaseOportunidad v2.
+    /// Llama a CRM.SP_ActualizarFaseOportunidad v5.
     /// </summary>
     public async Task ActualizarFaseAsync(ActualizarFaseRequest req, string usuario)
     {
@@ -284,6 +285,7 @@ public class OportunidadService
         p.Add("@TiempoMeses",         req.TiempoMeses,         DbType.Byte);
         p.Add("@IdServicio",          req.IdServicio,          DbType.Int16);
         p.Add("@IdMunicipio",         req.IdMunicipio,         DbType.Int32);
+        p.Add("@IdModalidad",         req.IdModalidad,         DbType.Byte);    // [v3.4]
         p.Add("@IdMesInicio",         req.IdMesInicio,         DbType.Byte);
         p.Add("@FechaInicioServicio", req.FechaInicioServicio, DbType.Date);
         p.Add("@FechaFinServicio",    req.FechaFinServicio,    DbType.Date);
@@ -292,9 +294,9 @@ public class OportunidadService
             "CRM.SP_ActualizarFaseOportunidad", p, commandType: CommandType.StoredProcedure);
 
         _logger.LogInformation(
-            "Fase actualizada: Cot={Cot} IdOp={Id} Fase={F} MesInicio={Mi} / Usuario={U}",
+            "Fase actualizada: Cot={Cot} IdOp={Id} Fase={F} Modalidad={Mo} MesInicio={Mi} / Usuario={U}",
             numeroCot ?? "(sin cotización)", req.IdOportunidad, req.IdFaseVenta,
-            req.IdMesInicio, usuario);
+            req.IdModalidad, req.IdMesInicio, usuario);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

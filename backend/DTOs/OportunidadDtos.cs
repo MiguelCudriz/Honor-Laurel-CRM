@@ -39,13 +39,22 @@ public class CrearOportunidadRequest
     [Required]
     public int IdServicio { get; set; }
 
-    [Required]
-    public int IdModalidad { get; set; }
+    /// <summary>
+    /// [v3.4] Opcional en fases de Contacto (Email / Telefónico), ya que en esa
+    /// etapa aún no se conoce la modalidad comercial. Obligatorio (validado en
+    /// frontend) para el resto de fases. Puede completarse después vía
+    /// /oportunidades/actualizar-fase.
+    /// </summary>
+    public int? IdModalidad { get; set; }
 
     public bool EsLicitacion { get; set; } = false;
 
-    [Required, Range(1, 255)]
-    public int TiempoMeses { get; set; }
+    /// <summary>
+    /// [v3.4] Opcional en fases de Contacto (Email / Telefónico). Obligatorio
+    /// (validado en frontend) para el resto de fases.
+    /// </summary>
+    [Range(1, 255)]
+    public int? TiempoMeses { get; set; }
 
     [Range(1, 12)]
     public int? IdMesInicio { get; set; }
@@ -113,6 +122,9 @@ public class ActualizarOportunidadRequest
 //  REQUEST: Actualizar Fase — registra movimiento + actualiza datos maestros
 //  [v3.3] Añadidos: Nit, IdServicio, IdMunicipio, IdMesInicio,
 //         FechaInicioServicio, FechaFinServicio (todos opcionales).
+//  [v3.4] Añadido: IdModalidad (opcional) — permite completar/cambiar la
+//         modalidad cuando una oportunidad creada en fase de Contacto avanza
+//         a una fase que sí la requiere.
 // ─────────────────────────────────────────────────────────────────────────────
 public class ActualizarFaseRequest
 {
@@ -152,6 +164,13 @@ public class ActualizarFaseRequest
     /// <summary>Actualiza CRM.Oportunidad.IdMunicipio si se proporciona.</summary>
     public int? IdMunicipio { get; set; }
 
+    /// <summary>
+    /// [v3.4] Actualiza CRM.Oportunidad.IdModalidad si se proporciona. Permite
+    /// completar la modalidad cuando la oportunidad fue creada en fase de
+    /// Contacto (sin modalidad) y ahora avanza a una fase que sí la requiere.
+    /// </summary>
+    public int? IdModalidad { get; set; }
+
     /// <summary>Actualiza CRM.Oportunidad.IdMesInicio (1–12) si se proporciona.</summary>
     [Range(1, 12)]
     public int? IdMesInicio { get; set; }
@@ -162,8 +181,7 @@ public class ActualizarFaseRequest
     /// <summary>Actualiza CRM.Oportunidad.FechaFinServicio si se proporciona.</summary>
     public DateTime? FechaFinServicio { get; set; }
 
-    /// <summary>Actualiza CRM.Oportunidad.TiempoMeses si se proporciona.
-    /// Obligatorio al registrar un movimiento — afecta cálculo de MontoTotal.</summary>
+    /// <summary>Actualiza CRM.Oportunidad.TiempoMeses si se proporciona.</summary>
     [Range(1, 255)]
     public int? TiempoMeses { get; set; }
 

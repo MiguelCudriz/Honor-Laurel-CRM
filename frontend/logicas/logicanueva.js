@@ -1,5 +1,17 @@
 /* ================================================================
    logicanueva.js — CRM Honor · Nueva Oportunidad Comercial
+   [v4] Flujo tipo wizard:
+     Paso 1: Tipo de cliente (único visible al iniciar)
+     Paso 2: Datos del cliente (búsqueda estilo Municipio para
+             Actual/Profundización)
+     Paso 3: Fase actual de la oportunidad
+     Paso 4: Resto del formulario, con campos habilitados/ocultos
+             según el grupo de fase elegido:
+               - CONTACTO (Email/Telefónico): mínimo indispensable
+               - LIBRE (Inscripción/Visita/Licitación Abierta): formulario
+                 completo tal como estaba antes (permite $0)
+               - COTIZACION (Presentación/Sustentación/Negociación/Venta):
+                 formulario completo + N° Cotización obligatorio
    ================================================================ */
 
 const API = 'http://localhost:5000/api';
@@ -10,6 +22,8 @@ let clienteSeleccionado = null;
 let clienteProfSeleccionado = null;
 let debounceTimer       = null;
 let debounceTimerProf   = null;
+let resultadosClienteCache     = [];
+let resultadosClienteProfCache = [];
 
 // ── AUTH ─────────────────────────────────────────────────────────
 const usuario = sessionStorage.getItem('crm_usuario');
@@ -37,12 +51,11 @@ const NOMBRES_MESES = [
 ];
 
 // ── FASES EXCLUIDAS (no aparecen en nueva oportunidad) ────────────
+// Estas fases solo tienen sentido como resultado de una actualización,
+// nunca como punto de partida de una oportunidad nueva.
 const FASES_EXCLUIDAS = ['NO PRESENTADO', 'NO ADJUDICADO', 'PASO DE MES'];
 
 // ── FASES QUE PERMITEN VALORES EN $0 ─────────────────────────────
-// Alineado con la BD: ids 4,5,6,7,8 permiten cero
-// (CONTACTO E-MAIL, CONTACTO TELEFONICO, INSCRIPCION PROVEEDOR,
-//  VISITA A CLIENTE, LICITACION ABIERTA)
 const FASES_PERMITEN_CERO = [
   'CONTACTO E-MAIL',
   'CONTACTO EMAIL',
@@ -51,6 +64,24 @@ const FASES_PERMITEN_CERO = [
   'VISITA A CLIENTE',
   'LICITACION ABIERTA',
 ];
+
+// ── GRUPOS DE FASE (definen qué campos se piden) ─────────────────
+// Grupo "contacto": solo lo indispensable (Servicio, Ubicación, Consultor,
+//                    Fecha, Observación). Modalidad/Tiempo quedan en NULL
+//                    y se completan más adelante desde Actualizar/Consultar.
+const FASES_CONTACTO = ['CONTACTO E-MAIL', 'CONTACTO EMAIL', 'CONTACTO TELEFONICO'];
+
+// Grupo "cotizacion": formulario completo + N° Cotización obligatorio.
+const FASES_COTIZACION_OBLIGATORIA = [
+  'PRESENTACION DE PROPUESTA',
+  'SUSTENTACION DE PROPUESTA',
+  'NEGOCIACION',
+  'VENTA',
+];
+
+// El resto de fases visibles (INSCRIPCION PROVEEDOR, VISITA A CLIENTE,
+// LICITACION ABIERTA) cae en el grupo "libre": formulario completo, tal
+// como se presentaba antes, sin campos ocultos ni cotización obligatoria.
 
 // Normaliza texto: quita acentos, mayúsculas, sin espacios extra
 function normalizarTexto(s) {
@@ -66,21 +97,42 @@ function fasePermiteValorCero() {
   });
 }
 
-// ── SELECTOR MODO CLIENTE ─────────────────────────────────────────
+/** Devuelve 'contacto' | 'cotizacion' | 'libre' | null (sin fase elegida aún) */
+function obtenerGrupoFase() {
+  const sel  = document.getElementById('idFaseVenta');
+  const desc = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
+  if (!desc) return null;
+  if (FASES_CONTACTO.some(f => desc === normalizarTexto(f))) return 'contacto';
+  if (FASES_COTIZACION_OBLIGATORIA.some(f => desc === normalizarTexto(f))) return 'cotizacion';
+  return 'libre';
+}
+
+// ── INDICADOR DE PASOS (wizard) ───────────────────────────────────
+function marcarPaso(n) {
+  [1, 2, 3, 4].forEach(i => {
+    const el = document.getElementById(`wsPaso${i}`);
+    if (!el) return;
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  });
+}
+
+// ── PASO 1 → PASO 2: SELECTOR MODO CLIENTE ────────────────────────
 function seleccionarModo(modo) {
   modoCliente = modo;
 
-  // Resetear clases de los 3 botones
   document.getElementById('btnNuevo').className        = 'btn-tipo' + (modo === 'nuevo'         ? ' activo-nuevo'         : '');
   document.getElementById('btnActual').className       = 'btn-tipo' + (modo === 'actual'        ? ' activo-actual'        : '');
   document.getElementById('btnProfundizacion').className = 'btn-tipo' + (modo === 'profundizacion' ? ' activo-profundizacion' : '');
+
+  document.getElementById('stepTipo').style.display = 'none';
 
   const card = document.getElementById('cardCliente');
   card.style.display = 'block';
   card.style.animation = 'none';
   requestAnimationFrame(() => { card.style.animation = ''; });
 
-  // Ocultar todos los paneles primero
   document.getElementById('panelNuevo').style.display         = 'none';
   document.getElementById('panelActual').style.display        = 'none';
   document.getElementById('panelProfundizacion').style.display = 'none';
@@ -93,7 +145,6 @@ function seleccionarModo(modo) {
     tag.textContent       = 'NUEVO';
     tag.style.background  = 'var(--verde)';
     document.getElementById('panelNuevo').style.display = 'block';
-    // Limpiar campos
     ['nitNuevo','razonSocialNuevo','telNuevo','correoNuevo'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
@@ -114,21 +165,142 @@ function seleccionarModo(modo) {
     document.getElementById('panelProfundizacion').style.display = 'block';
     limpiarBusquedaProf();
   }
+
+  marcarPaso(2);
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 }
 
-// ── BÚSQUEDA CLIENTE ACTUAL ───────────────────────────────────────
+function volverATipo() {
+  document.getElementById('cardCliente').style.display = 'none';
+  document.getElementById('stepTipo').style.display = 'block';
+  ['btnNuevo','btnActual','btnProfundizacion'].forEach(id => {
+    document.getElementById(id).className = 'btn-tipo';
+  });
+  modoCliente = null;
+  marcarPaso(1);
+}
+
+// ── PASO 2 → PASO 3: VALIDAR CLIENTE Y CONTINUAR ──────────────────
+function continuarDesdeCliente() {
+  if (!modoCliente) {
+    toast('Selecciona el tipo de cliente antes de continuar.', 'err');
+    return;
+  }
+
+  let nombreResumen = '';
+
+  if (modoCliente === 'nuevo') {
+    const razonSocial = document.getElementById('razonSocialNuevo').value.trim();
+    const sector       = document.getElementById('sectorNuevo').value;
+    const razonEl = document.getElementById('razonSocialNuevo');
+    if (!razonSocial) { razonEl.classList.add('error'); toast('La Razón Social es obligatoria.', 'err'); return; }
+    razonEl.classList.remove('error');
+    if (!sector) { toast('Selecciona el Sector Económico.', 'err'); return; }
+    nombreResumen = razonSocial.toUpperCase();
+
+  } else if (modoCliente === 'actual') {
+    if (!clienteSeleccionado) { toast('Busca y selecciona un cliente existente.', 'err'); return; }
+    if (!document.getElementById('sectorActual').value) { toast('Selecciona el Sector Económico.', 'err'); return; }
+    nombreResumen = clienteSeleccionado.razonSocial;
+
+  } else if (modoCliente === 'profundizacion') {
+    if (!clienteProfSeleccionado) { toast('Busca y selecciona el cliente a profundizar.', 'err'); return; }
+    if (!document.getElementById('sectorProfundizacion').value) { toast('Selecciona el Sector Económico.', 'err'); return; }
+    nombreResumen = clienteProfSeleccionado.razonSocial;
+  }
+
+  const badgeTxt = { nuevo: 'NUEVO', actual: 'ACTUAL', profundizacion: 'PROFUNDIZACIÓN' }[modoCliente];
+  const bar = document.getElementById('resumenCliente');
+  document.getElementById('resumenClienteTexto').innerHTML =
+    `<strong>${nombreResumen}</strong> <span class="resumen-tag">${badgeTxt}</span>`;
+  bar.style.display = 'flex';
+
+  document.getElementById('cardCliente').style.display = 'none';
+  document.getElementById('cardFase').style.display    = 'block';
+  marcarPaso(3);
+  setTimeout(() => document.getElementById('cardFase').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function volverACliente() {
+  document.getElementById('cardFase').style.display        = 'none';
+  document.getElementById('restoFormulario').style.display = 'none';
+  document.getElementById('resumenCliente').style.display  = 'none';
+  document.getElementById('cardCliente').style.display     = 'block';
+  marcarPaso(2);
+  setTimeout(() => document.getElementById('cardCliente').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+// ── PASO 3 → PASO 4: FASE SELECCIONADA (auto-despliega el resto) ─
+function onFaseSeleccionada() {
+  const grupo = obtenerGrupoFase();
+  const resto = document.getElementById('restoFormulario');
+
+  if (!grupo) { resto.style.display = 'none'; return; }
+
+  const esContacto   = grupo === 'contacto';
+  const esCotizacion = grupo === 'cotizacion';
+
+  // Campos que solo aplican fuera del grupo "contacto"
+  ['grpModalidad', 'grpTiempo', 'grpMesInicio', 'grpMesFin',
+   'grpFechaInicio', 'grpFechaFin', 'grpLicitacion',
+   'grpValorMensual', 'grpCosto', 'grpAiuPreview'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = esContacto ? 'none' : '';
+  });
+
+  // N° Cotización: oculto en Contacto, visible en las demás (obligatorio en grupo cotizacion)
+  document.getElementById('grpCotizacion').style.display = esContacto ? 'none' : '';
+  document.getElementById('reqCotizacion').style.display = esCotizacion ? 'inline' : 'none';
+  document.getElementById('hintCotizacion').innerHTML = esCotizacion
+    ? '<i class="bi bi-exclamation-circle me-1"></i>Obligatorio en esta fase'
+    : '<i class="bi bi-info-circle me-1"></i>Opcional · puedes asignarlo después';
+
+  const selFase = document.getElementById('idFaseVenta');
+  document.getElementById('badgeFaseElegida').textContent =
+    selFase.options[selFase.selectedIndex]?.text || 'FASE';
+
+  resto.style.display = 'block';
+  marcarPaso(4);
+  setTimeout(() => resto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+// ── BÚSQUEDA CLIENTE ACTUAL — estilo Municipio (input + select resultados) ──
 function buscarClienteDebounce() {
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(buscarCliente, 380);
+  debounceTimer = setTimeout(buscarCliente, 350);
 }
 
 async function buscarCliente() {
-  const q = document.getElementById('buscarCliente').value.trim();
-  if (q.length < 3) return;
+  const q   = document.getElementById('buscarCliente').value.trim();
+  const sel = document.getElementById('selectResultadosCliente');
+
+  if (q.length < 3) {
+    sel.style.display = 'none';
+    sel.innerHTML = '<option value="">— Resultados —</option>';
+    return;
+  }
   try {
     const res = await fetch(`${API}/clientes/buscar?criterio=${encodeURIComponent(q)}`).then(r => r.json());
-    if (res.data && res.data.length > 0) seleccionarCliente(res.data[0]);
-  } catch (e) {}
+    resultadosClienteCache = res.data || [];
+    if (!resultadosClienteCache.length) {
+      sel.innerHTML = '<option value="">Sin coincidencias…</option>';
+      sel.style.display = 'block';
+      return;
+    }
+    sel.innerHTML = `<option value="">— ${resultadosClienteCache.length} resultado(s), selecciona uno —</option>` +
+      resultadosClienteCache.map((c, i) =>
+        `<option value="${i}">${c.razonSocial}${c.nit ? ' — NIT ' + c.nit : ''}</option>`
+      ).join('');
+    sel.style.display = 'block';
+  } catch (e) {
+    toast('Error buscando clientes.', 'err');
+  }
+}
+
+function elegirClienteDeResultados() {
+  const sel = document.getElementById('selectResultadosCliente');
+  if (sel.value === '') return;
+  seleccionarCliente(resultadosClienteCache[parseInt(sel.value)]);
 }
 
 function seleccionarCliente(c) {
@@ -137,30 +309,58 @@ function seleccionarCliente(c) {
   document.getElementById('clienteNit').textContent    = c.nit ? `NIT: ${c.nit}` : 'Sin NIT registrado';
   document.getElementById('clienteBadge').style.display = 'flex';
   document.getElementById('buscarCliente').disabled = true;
+  document.getElementById('selectResultadosCliente').style.display = 'none';
   toast(`Cliente encontrado: ${c.razonSocial}`, 'ok');
 }
 
 function limpiarBusquedaActual() {
   clienteSeleccionado = null;
+  resultadosClienteCache = [];
   const inp = document.getElementById('buscarCliente');
   if (inp) { inp.value = ''; inp.disabled = false; inp.focus(); }
+  const sel = document.getElementById('selectResultadosCliente');
+  if (sel) { sel.style.display = 'none'; sel.innerHTML = '<option value="">— Resultados —</option>'; }
   document.getElementById('clienteBadge').style.display = 'none';
   document.getElementById('sectorActual').selectedIndex = 0;
 }
 
-// ── BÚSQUEDA CLIENTE PROFUNDIZACIÓN ──────────────────────────────
+// ── BÚSQUEDA CLIENTE PROFUNDIZACIÓN — mismo patrón ───────────────
 function buscarClienteProfDebounce() {
   clearTimeout(debounceTimerProf);
-  debounceTimerProf = setTimeout(buscarClienteProf, 380);
+  debounceTimerProf = setTimeout(buscarClienteProf, 350);
 }
 
 async function buscarClienteProf() {
-  const q = document.getElementById('buscarClienteProf').value.trim();
-  if (q.length < 3) return;
+  const q   = document.getElementById('buscarClienteProf').value.trim();
+  const sel = document.getElementById('selectResultadosClienteProf');
+
+  if (q.length < 3) {
+    sel.style.display = 'none';
+    sel.innerHTML = '<option value="">— Resultados —</option>';
+    return;
+  }
   try {
     const res = await fetch(`${API}/clientes/buscar?criterio=${encodeURIComponent(q)}`).then(r => r.json());
-    if (res.data && res.data.length > 0) seleccionarClienteProf(res.data[0]);
-  } catch (e) {}
+    resultadosClienteProfCache = res.data || [];
+    if (!resultadosClienteProfCache.length) {
+      sel.innerHTML = '<option value="">Sin coincidencias…</option>';
+      sel.style.display = 'block';
+      return;
+    }
+    sel.innerHTML = `<option value="">— ${resultadosClienteProfCache.length} resultado(s), selecciona uno —</option>` +
+      resultadosClienteProfCache.map((c, i) =>
+        `<option value="${i}">${c.razonSocial}${c.nit ? ' — NIT ' + c.nit : ''}</option>`
+      ).join('');
+    sel.style.display = 'block';
+  } catch (e) {
+    toast('Error buscando clientes.', 'err');
+  }
+}
+
+function elegirClienteProfDeResultados() {
+  const sel = document.getElementById('selectResultadosClienteProf');
+  if (sel.value === '') return;
+  seleccionarClienteProf(resultadosClienteProfCache[parseInt(sel.value)]);
 }
 
 function seleccionarClienteProf(c) {
@@ -169,13 +369,17 @@ function seleccionarClienteProf(c) {
   document.getElementById('clienteNitProf').textContent    = c.nit ? `NIT: ${c.nit}` : 'Sin NIT registrado';
   document.getElementById('clienteBadgeProf').style.display = 'flex';
   document.getElementById('buscarClienteProf').disabled = true;
+  document.getElementById('selectResultadosClienteProf').style.display = 'none';
   toast(`Cliente encontrado: ${c.razonSocial}`, 'ok');
 }
 
 function limpiarBusquedaProf() {
   clienteProfSeleccionado = null;
+  resultadosClienteProfCache = [];
   const inp = document.getElementById('buscarClienteProf');
   if (inp) { inp.value = ''; inp.disabled = false; inp.focus(); }
+  const sel = document.getElementById('selectResultadosClienteProf');
+  if (sel) { sel.style.display = 'none'; sel.innerHTML = '<option value="">— Resultados —</option>'; }
   document.getElementById('clienteBadgeProf').style.display = 'none';
   document.getElementById('sectorProfundizacion').selectedIndex = 0;
 }
@@ -207,7 +411,6 @@ async function cargarCatalogos() {
       fetch(`${API}/catalogos/municipios`).then(r => r.json()),
     ]);
 
-    // Poblar sectores en los 3 paneles
     llenarSelect('sectorNuevo',          sectores.data, 'id', 'descripcion');
     llenarSelect('sectorActual',         sectores.data, 'id', 'descripcion');
     llenarSelect('sectorProfundizacion', sectores.data, 'id', 'descripcion');
@@ -216,7 +419,6 @@ async function cargarCatalogos() {
     llenarSelect('idServicio',  servicios.data,   'id', 'descripcion');
     llenarSelect('idModalidad', modalidades.data, 'id', 'descripcion');
 
-    // Filtrar fases excluidas (usando normalización para comparación segura)
     const fasesFiltradas = (fases.data || []).filter(f =>
       !FASES_EXCLUIDAS.includes(normalizarTexto(f.descripcion))
     );
@@ -224,7 +426,6 @@ async function cargarCatalogos() {
 
     todosLosMunicipios = municipios.data;
 
-    // Bloquear consultor al usuario en sesión
     const consSelect = document.getElementById('idConsultor');
     for (const opt of consSelect.options) {
       if (normalizarTexto(opt.text) === normalizarTexto(usuario)) {
@@ -233,12 +434,10 @@ async function cargarCatalogos() {
     }
     consSelect.disabled = true;
 
-    // Fecha automática bloqueada
     const fechaEl = document.getElementById('fecha');
     fechaEl.valueAsDate = new Date();
     fechaEl.readOnly    = true;
 
-    // Listener modalidad → limitar meses
     document.getElementById('idModalidad').addEventListener('change', aplicarLimiteMeses);
 
   } catch (e) {
@@ -341,8 +540,6 @@ function formatCOP(v) {
 }
 
 // ── CALCULAR FECHA FIN SERVICIO ───────────────────────────────────
-// Regla: fechaFin = fechaInicio + tiempoMeses meses − 1 día
-// Ejemplo: 15/04/2026 + 3 meses → 14/07/2026
 function calcularFechaFinServicio() {
   const fechaInicio = document.getElementById('fechaInicioServicio').value;
   const meses       = parseInt(document.getElementById('tiempoMeses').value) || 0;
@@ -359,9 +556,6 @@ function calcularFechaFinServicio() {
 }
 
 // ── CALCULAR MES FIN SERVICIO ─────────────────────────────────────
-// Regla: mesFin = mesInicio + tiempoMeses − 1 (base 1-12, con wrap anual)
-// Ejemplo: Enero(1) + 3 meses = Marzo(3)  ← el contrato cubre Ene, Feb, Mar
-// Ejemplo: Noviembre(11) + 3 meses = Enero(1) del siguiente año
 function calcularMesFinServicio() {
   const mesInicioVal = parseInt(document.getElementById('mesInicioServicio').value);
   const meses        = parseInt(document.getElementById('tiempoMeses').value) || 0;
@@ -369,15 +563,13 @@ function calcularMesFinServicio() {
 
   if (!mesInicioVal || meses <= 0) { mesFinEl.value = ''; return; }
 
-  // (mesInicio - 1) + (meses - 1)  con módulo 12, resultado base 0
   const idxFin = ((mesInicioVal - 1) + (meses - 1)) % 12;
   mesFinEl.value = NOMBRES_MESES[idxFin];
 }
 
-// Listeners de tiempo meses
+// Listeners de tiempo meses / fechas
 document.getElementById('fechaInicioServicio').addEventListener('change', function() {
   calcularFechaFinServicio();
-  // Limpiar error si el mes ahora coincide
   const mesS = parseInt(document.getElementById('mesInicioServicio').value);
   if (mesS && this.value) {
     const mesR = new Date(this.value + 'T00:00:00').getMonth() + 1;
@@ -385,7 +577,6 @@ document.getElementById('fechaInicioServicio').addEventListener('change', functi
   }
 });
 
-// Sincronizar mes de inicio cuando cambia la fecha de inicio
 document.getElementById('mesInicioServicio').addEventListener('change', function() {
   calcularMesFinServicio();
   const fechaEl = document.getElementById('fechaInicioServicio');
@@ -399,6 +590,7 @@ document.getElementById('mesInicioServicio').addEventListener('change', function
     }
   }
 });
+
 document.getElementById('tiempoMeses').addEventListener('input', function () {
   const sel    = document.getElementById('idModalidad');
   const desc   = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
@@ -421,6 +613,14 @@ async function guardarOportunidad() {
     toast('Selecciona el tipo de cliente antes de continuar.', 'err');
     return;
   }
+
+  const grupo = obtenerGrupoFase();
+  if (!grupo) {
+    toast('Selecciona la fase de la oportunidad.', 'err');
+    return;
+  }
+  const esContacto   = grupo === 'contacto';
+  const esCotizacion = grupo === 'cotizacion';
 
   let nit, razonSocial, idTipoCliente, idSectorEconomico;
 
@@ -473,83 +673,102 @@ async function guardarOportunidad() {
     if (!idSectorEconomico) { toast('Selecciona el Sector Económico.', 'err'); return; }
   }
 
-  // Observación obligatoria
+  // Observación obligatoria (siempre)
   const obsEl = document.getElementById('observacion');
   if (!obsEl.value.trim()) {
     obsEl.classList.add('error');
-    toast('La observación del primer movimiento es obligatoria.', 'err');
+    toast('La observación es obligatoria.', 'err');
     return;
   }
   obsEl.classList.remove('error');
 
-  // Campos obligatorios
-  const reqs = ['idServicio','idModalidad','tiempoMeses','idMunicipio','idConsultor','idFaseVenta','fecha'];
+  // Campos obligatorios siempre
+  const reqsBase = ['idServicio', 'idMunicipio', 'idConsultor', 'idFaseVenta', 'fecha'];
+  // Campos obligatorios solo fuera del grupo "contacto"
+  const reqsCompletos = ['idModalidad', 'tiempoMeses'];
+
   let ok = true;
-  reqs.forEach(id => {
+  reqsBase.forEach(id => {
     const el = document.getElementById(id);
     if (!el || !el.value) { el?.classList.add('error'); ok = false; }
     else el.classList.remove('error');
   });
+  if (!esContacto) {
+    reqsCompletos.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || !el.value) { el?.classList.add('error'); ok = false; }
+      else el.classList.remove('error');
+    });
+  }
   if (!ok) { toast('Completa todos los campos obligatorios (✦)', 'err'); return; }
 
-  // Validar que la Fecha Inicio corresponda al Mes Inicio seleccionado
-  const mesInicioSel = parseInt(document.getElementById('mesInicioServicio').value);
-  const fechaIniVal  = document.getElementById('fechaInicioServicio').value;
-  if (mesInicioSel && fechaIniVal) {
-    const mesReal = new Date(fechaIniVal + 'T00:00:00').getMonth() + 1;
-    if (mesReal !== mesInicioSel) {
-      document.getElementById('fechaInicioServicio').classList.add('error');
-      toast(`La Fecha de Inicio (${NOMBRES_MESES[mesReal-1]}) no corresponde al Mes de Inicio (${NOMBRES_MESES[mesInicioSel-1]}).`, 'err');
+  // N° Cotización obligatorio solo en el grupo "cotizacion"
+  if (esCotizacion) {
+    const cotEl = document.getElementById('numeroCotizacion');
+    if (!cotEl.value.trim()) {
+      cotEl.classList.add('error');
+      toast('El N° de Cotización es obligatorio en esta fase.', 'err');
       return;
     }
-    document.getElementById('fechaInicioServicio').classList.remove('error');
+    cotEl.classList.remove('error');
   }
 
-  const vm = parseMoney(document.getElementById('valorMensual').value);
-  const c  = parseMoney(document.getElementById('costo').value);
+  // Validar que la Fecha Inicio corresponda al Mes Inicio (solo si son visibles)
+  if (!esContacto) {
+    const mesInicioSel = parseInt(document.getElementById('mesInicioServicio').value);
+    const fechaIniVal  = document.getElementById('fechaInicioServicio').value;
+    if (mesInicioSel && fechaIniVal) {
+      const mesReal = new Date(fechaIniVal + 'T00:00:00').getMonth() + 1;
+      if (mesReal !== mesInicioSel) {
+        document.getElementById('fechaInicioServicio').classList.add('error');
+        toast(`La Fecha de Inicio (${NOMBRES_MESES[mesReal-1]}) no corresponde al Mes de Inicio (${NOMBRES_MESES[mesInicioSel-1]}).`, 'err');
+        return;
+      }
+      document.getElementById('fechaInicioServicio').classList.remove('error');
+    }
+  }
 
-  // Validación de valores según fase
-  const permiteValorCero = fasePermiteValorCero();
+  const vm = esContacto ? 0 : parseMoney(document.getElementById('valorMensual').value);
+  const c  = esContacto ? 0 : parseMoney(document.getElementById('costo').value);
 
-  if (!permiteValorCero) {
-    const vmEl = document.getElementById('valorMensual');
-    const cEl  = document.getElementById('costo');
+  if (!esContacto) {
+    const permiteValorCero = fasePermiteValorCero();
 
-    if (vm <= 0) {
-      vmEl.classList.add('error');
-      toast('El Valor Mensual debe ser mayor a $0 para esta fase.', 'err');
+    if (!permiteValorCero) {
+      const vmEl = document.getElementById('valorMensual');
+      const cEl  = document.getElementById('costo');
+
+      if (vm <= 0) {
+        vmEl.classList.add('error');
+        toast('El Valor Mensual debe ser mayor a $0 para esta fase.', 'err');
+        return;
+      }
+      vmEl.classList.remove('error');
+
+      if (c <= 0) {
+        cEl.classList.add('error');
+        toast('El Costo debe ser mayor a $0 para esta fase.', 'err');
+        return;
+      }
+      cEl.classList.remove('error');
+    }
+
+    if (vm > 0 && c >= vm) {
+      toast('El Costo no puede ser igual o mayor al Valor Mensual (AIU debe ser > 0%).', 'err');
+      document.getElementById('costo').classList.add('error');
       return;
     }
-    vmEl.classList.remove('error');
-
-    if (c <= 0) {
-      cEl.classList.add('error');
-      toast('El Costo debe ser mayor a $0 para esta fase.', 'err');
-      return;
-    }
-    cEl.classList.remove('error');
+    document.getElementById('costo').classList.remove('error');
   }
-
-  // Costo no puede ser >= Valor Mensual
-  if (vm > 0 && c >= vm) {
-    toast('El Costo no puede ser igual o mayor al Valor Mensual (AIU debe ser > 0%).', 'err');
-    document.getElementById('costo').classList.add('error');
-    return;
-  }
-  document.getElementById('costo').classList.remove('error');
 
   const btn = document.getElementById('btnGuardar');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Guardando...';
 
-  // Datos extras opcionales (solo aplican según modo)
   const telNuevo    = modoCliente === 'nuevo' ? (document.getElementById('telNuevo').value.trim()    || null) : null;
   const correoNuevo = modoCliente === 'nuevo' ? (document.getElementById('correoNuevo').value.trim() || null) : null;
 
-  // Mes inicio/fin
-  const mesInicioVal = parseInt(document.getElementById('mesInicioServicio').value) || null;
-  // mesFinServicio no se envía al backend: la BD lo calcula automáticamente
-  // a partir de IdMesInicio + TiempoMeses mediante SP_CrearOportunidad
+  const mesInicioVal = esContacto ? null : (parseInt(document.getElementById('mesInicioServicio').value) || null);
 
   const body = {
     nit,
@@ -562,12 +781,12 @@ async function guardarOportunidad() {
     idConsultor:         parseInt(document.getElementById('idConsultor').value),
     idMunicipio:         parseInt(document.getElementById('idMunicipio').value),
     idServicio:          parseInt(document.getElementById('idServicio').value),
-    idModalidad:         parseInt(document.getElementById('idModalidad').value),
-    esLicitacion:        document.getElementById('esLicitacion').value === 'true',
-    tiempoMeses:         parseInt(document.getElementById('tiempoMeses').value),
-    idMesInicio:         mesInicioVal,   // mapea a IdMesInicio en el DTO del backend
-    fechaInicioServicio: document.getElementById('fechaInicioServicio').value || null,
-    fechaFinServicio:    document.getElementById('fechaFinServicio').value    || null,
+    idModalidad:         esContacto ? null : (parseInt(document.getElementById('idModalidad').value) || null),
+    esLicitacion:        esContacto ? false : (document.getElementById('esLicitacion').value === 'true'),
+    tiempoMeses:         esContacto ? null : (parseInt(document.getElementById('tiempoMeses').value) || null),
+    idMesInicio:         mesInicioVal,
+    fechaInicioServicio: esContacto ? null : (document.getElementById('fechaInicioServicio').value || null),
+    fechaFinServicio:    esContacto ? null : (document.getElementById('fechaFinServicio').value    || null),
     fecha:               document.getElementById('fecha').value,
     idFaseVenta:         parseInt(document.getElementById('idFaseVenta').value),
     valorMensual:        vm,
@@ -629,7 +848,7 @@ async function resolverIdTipo(descripcion) {
   return found ? found.id : 1;
 }
 
-// ── LIMPIAR FORMULARIO ────────────────────────────────────────────
+// ── LIMPIAR FORMULARIO (vuelve al Paso 1) ─────────────────────────
 function limpiarFormulario() {
   modoCliente              = null;
   clienteSeleccionado      = null;
@@ -638,10 +857,18 @@ function limpiarFormulario() {
   document.getElementById('btnNuevo').className           = 'btn-tipo';
   document.getElementById('btnActual').className          = 'btn-tipo';
   document.getElementById('btnProfundizacion').className  = 'btn-tipo';
-  document.getElementById('cardCliente').style.display   = 'none';
+
+  document.getElementById('cardCliente').style.display     = 'none';
+  document.getElementById('cardFase').style.display        = 'none';
+  document.getElementById('restoFormulario').style.display = 'none';
+  document.getElementById('resumenCliente').style.display  = 'none';
+  document.getElementById('stepTipo').style.display        = 'block';
+
   document.getElementById('panelNuevo').style.display    = 'none';
   document.getElementById('panelActual').style.display   = 'none';
   document.getElementById('panelProfundizacion').style.display = 'none';
+
+  document.getElementById('idFaseVenta').selectedIndex = 0;
 
   // Campos de texto / número
   ['numeroCotizacion','tiempoMeses','fechaInicioServicio','fechaFinServicio',
@@ -651,27 +878,26 @@ function limpiarFormulario() {
   });
 
   // Selects
-  ['idServicio','idModalidad','idFaseVenta','mesInicioServicio',
+  ['idServicio','idModalidad','mesInicioServicio',
    'sectorNuevo','sectorActual','sectorProfundizacion'].forEach(id => {
     const el = document.getElementById(id); if (el) el.selectedIndex = 0;
   });
   document.getElementById('esLicitacion').value = 'false';
 
-  // Búsquedas de clientes
   limpiarBusquedaActual();
   limpiarBusquedaProf();
 
-  // Restaurar fecha automática
   const fechaEl = document.getElementById('fecha');
   fechaEl.valueAsDate = new Date();
   fechaEl.readOnly    = true;
 
-  // Restaurar hint tiempo meses
   const hint = document.querySelector('#tiempoMeses + .hint');
   if (hint) hint.innerHTML = '<i class="bi bi-info-circle me-1"></i>Máximo 72 meses';
   document.getElementById('tiempoMeses').max = 72;
 
   calcularAIU();
+  marcarPaso(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ── VERIFICAR CLIENTE EXISTENTE ───────────────────────────────────

@@ -1,5 +1,8 @@
 /* ================================================================
    logicaactualizar.js — CRM Honor · Consultar / Actualizar
+   [v4] Se agrega el catálogo y selector opcional de Modalidad,
+   para poder completarla en oportunidades que fueron creadas en
+   fase de Contacto (sin modalidad asignada) y ahora avanzan.
    ================================================================ */
 
 const API = 'http://localhost:5000/api';
@@ -10,6 +13,7 @@ let catalogoFases          = [];
 let ordenFaseActiva        = 0;   // OrdenFunnel de la fase vigente
 let idFaseActiva           = 0;   // IdFaseVenta vigente
 let catalogoConsultores   = [];
+let catalogoModalidades   = [];
 let todasLasOportunidades = [];   // dataset completo para filtrar en grilla
 let todosLosServicios     = [];   // para el selector de servicio en actualizar
 let todosLosMunicipios    = [];   // para el filtro de municipio en actualizar
@@ -142,16 +146,18 @@ function llenarSelect(id, items, valKey, txtKey) {
 // ── CARGAR CATÁLOGOS ──────────────────────────────────────────────
 async function cargarCatalogos() {
   try {
-    const [fases, consultores, servicios, municipios] = await Promise.all([
+    const [fases, consultores, servicios, municipios, modalidades] = await Promise.all([
       fetch(`${API}/catalogos/fases-venta`).then(r => r.json()),
       fetch(`${API}/catalogos/consultores`).then(r => r.json()),
       fetch(`${API}/catalogos/servicios`).then(r => r.json()),
       fetch(`${API}/catalogos/municipios`).then(r => r.json()),
+      fetch(`${API}/catalogos/modalidades`).then(r => r.json()),
     ]);
     catalogoFases       = fases.data       || [];
     catalogoConsultores = consultores.data || [];
     todosLosServicios   = servicios.data   || [];
     todosLosMunicipios  = municipios.data  || [];
+    catalogoModalidades = modalidades.data || [];
 
     llenarSelect('upFaseVenta', catalogoFases,       'id', 'descripcion');
     llenarSelect('upConsultor', catalogoConsultores, 'id', 'descripcion');
@@ -164,6 +170,17 @@ async function cargarCatalogos() {
         const o = document.createElement('option');
         o.value = s.id; o.textContent = s.descripcion;
         selServicio.appendChild(o);
+      });
+    }
+
+    // Poblar selector de modalidad en formulario actualizar (opcional)
+    const selModalidad = document.getElementById('upIdModalidad');
+    if (selModalidad) {
+      selModalidad.innerHTML = '<option value="">— Sin cambio —</option>';
+      catalogoModalidades.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m.id; o.textContent = m.descripcion;
+        selModalidad.appendChild(o);
       });
     }
 
@@ -441,7 +458,7 @@ function mostrarDetalle(data) {
     <div class="kpi-card verde">
       <div class="kpi-lbl">Monto Total</div>
       <div class="kpi-val">${formatCOP(cab.montoTotalDuracion)}</div>
-      <div class="kpi-sub">${cab.tiempoMeses} meses</div>
+      <div class="kpi-sub">${cab.tiempoMeses ?? '—'} meses</div>
     </div>
     <div class="kpi-card naranja">
       <div class="kpi-lbl">Valor Ponderado</div>
@@ -459,7 +476,7 @@ function mostrarDetalle(data) {
     <div class="info-item"><div class="lbl">Sector Económico</div><div class="val">${cab.sectorEconomico || '—'}</div></div>
     <div class="info-item"><div class="lbl">Tipo Cliente</div><div class="val">${cab.tipoCliente || '—'}</div></div>
     <div class="info-item"><div class="lbl">Servicio</div><div class="val">${cab.servicio || '—'}</div></div>
-    <div class="info-item"><div class="lbl">Modalidad</div><div class="val">${cab.modalidadContrato || '—'}</div></div>
+    <div class="info-item"><div class="lbl">Modalidad</div><div class="val">${cab.modalidadContrato || '<em style="color:#8896B0;font-style:italic">Sin asignar</em>'}</div></div>
     <div class="info-item"><div class="lbl">Licitación</div><div class="val">${cab.licitacion || '—'}</div></div>
     <div class="info-item"><div class="lbl">Región</div><div class="val">${cab.region || '—'}</div></div>
     <div class="info-item"><div class="lbl">Departamento</div><div class="val">${cab.departamento || '—'}</div></div>
@@ -554,6 +571,24 @@ function mostrarDetalle(data) {
       o => normalizarTexto(o.textContent) === normalizarTexto(cab.servicio)
     );
     if (matchServicio) selServ.value = matchServicio.value;
+  }
+
+  // Pre-llenar modalidad (por texto — la cabecera no expone IdModalidad directamente).
+  // Si la oportunidad aún no tiene modalidad (fase de Contacto), queda en
+  // "Sin cambio" y se resalta el hint invitando a completarla.
+  const selModal = document.getElementById('upIdModalidad');
+  const hintModal = document.getElementById('upHintModalidad');
+  if (selModal) {
+    selModal.selectedIndex = 0;
+    if (cab.modalidadContrato) {
+      const matchModal = Array.from(selModal.options).find(
+        o => normalizarTexto(o.textContent) === normalizarTexto(cab.modalidadContrato)
+      );
+      if (matchModal) selModal.value = matchModal.value;
+      if (hintModal) hintModal.innerHTML = '<i class="bi bi-info-circle me-1"></i>Opcional · selecciona solo si deseas cambiarla';
+    } else if (hintModal) {
+      hintModal.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Esta oportunidad no tiene modalidad asignada — selecciónala si ya se conoce';
+    }
   }
 
   // Pre-llenar mes inicio (usa idMesInicio del cabecera — expuesto por la view)
@@ -709,6 +744,7 @@ async function actualizarFase() {
   // Datos maestros opcionales
   const upNit           = document.getElementById('upNit').value.trim() || null;
   const upIdServicio    = parseInt(document.getElementById('upIdServicio').value) || null;
+  const upIdModalidad   = parseInt(document.getElementById('upIdModalidad').value) || null;
   const upIdMunicipio   = parseInt(document.getElementById('upIdMunicipio').value) || null;
   const upNuevaCotizacion = document.getElementById('upNumeroCotizacion').value.trim().toUpperCase() || null;
   const upTiempoMesesVal  = parseInt(document.getElementById('upTiempoMeses').value) || null;
@@ -729,6 +765,7 @@ async function actualizarFase() {
     nuevoCotizacion:     upNuevaCotizacion,    // mapea a NuevoCotizacion en DTO
     tiempoMeses:         upTiempoMesesVal,     // mapea a TiempoMeses en DTO (obligatorio)
     idServicio:          upIdServicio,
+    idModalidad:         upIdModalidad,        // mapea a IdModalidad en DTO (opcional)
     idMunicipio:         upIdMunicipio,
     idMesInicio:         mesInicioVal,         // mapea a IdMesInicio en DTO
     fechaInicioServicio: fechaIni,
@@ -800,6 +837,8 @@ function limpiarFormActualizar() {
   if (elTM2) elTM2.value = '';
   const selS = document.getElementById('upIdServicio');
   if (selS) selS.selectedIndex = 0;
+  const selMo = document.getElementById('upIdModalidad');
+  if (selMo) selMo.selectedIndex = 0;
   const selM = document.getElementById('upIdMunicipio');
   if (selM) selM.innerHTML = '<option value="">— Busca primero arriba —</option>';
   const buscarM = document.getElementById('upBuscarMunicipio');
