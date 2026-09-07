@@ -51,6 +51,40 @@ let filtroAiuMes           = 0;    // 0 = año completo, 1-12 = mes
 let forecastFullscreen     = false;
 let funnelFullscreen       = false;
 
+/* ── [v6] METAS VIGENTES SEGÚN EL FILTRO DE CONSULTOR ─────────────
+   Fuente única para las columnas META y CUMPLIMIENTO del forecast y
+   para la tabla resumen inferior. Si hay un consultor filtrado se usa
+   SU meta (presupuesto × su porcentaje, configurado en Metas
+   Comerciales); con "todos" se usa la meta de la empresa.            */
+function metasVigentes() {
+  if (filtroFcConsultor) {
+    // Búsqueda tolerante a tildes/mayúsculas/espacios entre el nombre del
+    // dropdown (ConsultorActual) y la clave de metaMensualPorConsultor.
+    const clave = Object.keys(metaMensualPorConsultor).find(
+      k => normalizarNombre(k) === normalizarNombre(filtroFcConsultor)
+    );
+    if (clave) {
+      const mensual = metaMensualPorConsultor[clave];
+      return {
+        mensual,
+        anual:      mensual.reduce((a, b) => a + b, 0),
+        esConsultor: true,
+        configurada: true,
+        nombre:     filtroFcConsultor
+      };
+    }
+    // Consultor sin porcentaje asignado para el año: no se le atribuye la
+    // meta de la empresa (daría un cumplimiento falso).
+    return { mensual: Array(12).fill(0), anual: 0, esConsultor: true, configurada: false, nombre: filtroFcConsultor };
+  }
+  return { mensual: metaMensualPorMes, anual: metaAnualTotal, esConsultor: false, configurada: metaAnualTotal > 0, nombre: null };
+}
+
+function normalizarNombre(str) {
+  return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
 /* ── Selector de año ─────────────────────────────────────────── */
 const selectAnio = document.getElementById('selectAnio');
 (function poblarAnios() {
@@ -718,16 +752,23 @@ function renderForecast(d, vista) {
   });
 
   // ── Tabla escalera ─────────────────────────────────────────
+  // [v6] Etiqueta de a quién corresponde la meta mostrada.
+  const metaSel  = metasVigentes();
+  const metaHead = metaSel.esConsultor
+    ? `<small style="display:block;font-weight:400;text-transform:none">${metaSel.configurada ? metaSel.nombre : 'sin meta asignada'}</small>`
+    : '<small style="display:block;font-weight:400;text-transform:none">Empresa</small>';
+
   document.getElementById('forecastThead').innerHTML = `<tr>
     <th>Corte</th>
     ${MESES_ABR.map(m => `<th class="mes-col">${m}</th>`).join('')}
     <th class="total-col">TOTAL</th>
     <th class="acum-col">TOTAL ACUMULADO</th>
-    <th class="meta-exp-col">META MENSUAL / ANUAL</th>
-    <th class="cumpl-col">CUMPLIMIENTO META</th>
+    <th class="meta-exp-col">META MENSUAL / ANUAL${metaHead}</th>
+    <th class="cumpl-col">CUMPLIMIENTO META${metaHead}</th>
   </tr>`;
 
   const tbody = document.getElementById('forecastTbody');
+  const meta  = metasVigentes();          // [v6] empresa o consultor filtrado
   let rows = '';
   let acumuladoAnual = 0;
 
@@ -736,14 +777,13 @@ function renderForecast(d, vista) {
     const total = vals.reduce((s, v) => s + v, 0);
     acumuladoAnual += total;
 
-    // META MENSUAL / ANUAL: valor directo de la distribución de metas para ese mes
-    // (ej: ENE=$1,430,000,000 tal cual, sin dividir por meses restantes)
+    // [v6] META MENSUAL / ANUAL y CUMPLIMIENTO responden al filtro de consultor.
     const idxMes  = fila.mesCohorte - 1;   // 0-based
-    const metaExp = metaMensualPorMes[idxMes] || 0;
+    const metaExp = meta.mensual[idxMes] || 0;
 
-    // CUMPLIMIENTO = acumulado hasta este corte / meta anual total
-    const cumplPct   = metaAnualTotal > 0
-      ? Math.round((acumuladoAnual / metaAnualTotal) * 100)
+    // CUMPLIMIENTO = acumulado hasta este corte / meta anual (empresa o consultor)
+    const cumplPct   = meta.anual > 0
+      ? Math.round((acumuladoAnual / meta.anual) * 100)
       : 0;
     const cumplColor = cumplPct >= 100 ? 'var(--verde-dark)' :
                        cumplPct >= 60  ? 'var(--naranja)' : 'var(--rojo)';
@@ -759,13 +799,13 @@ function renderForecast(d, vista) {
       <td class="col-total">${copFull(total)}</td>
       <td class="col-acum">${copFull(acumuladoAnual)}</td>
       <td class="col-meta-exp">${metaExp > 0 ? copFull(metaExp) : '—'}</td>
-      <td class="col-cumpl" style="color:${cumplColor};font-weight:800">${metaAnualTotal > 0 ? cumplPct + '%' : '—'}</td>
+      <td class="col-cumpl" style="color:${cumplColor};font-weight:800">${meta.anual > 0 ? cumplPct + '%' : '—'}</td>
     </tr>`;
   });
   tbody.innerHTML = rows;
 
   const granTotal = totalsMes.reduce((s, v) => s + v, 0);
-  const cumplFinalPct   = metaAnualTotal > 0 ? Math.round((granTotal / metaAnualTotal) * 100) : 0;
+  const cumplFinalPct   = meta.anual > 0 ? Math.round((granTotal / meta.anual) * 100) : 0;
   const cumplFinalColor = cumplFinalPct >= 100 ? 'var(--verde-dark)' :
                           cumplFinalPct >= 60  ? 'var(--naranja)' : 'var(--rojo)';
   document.getElementById('forecastTfoot').innerHTML = `
@@ -774,8 +814,8 @@ function renderForecast(d, vista) {
       ${totalsMes.map(v => `<td style="color:var(--azul-med)">${v > 0 ? copFull(v) : '—'}</td>`).join('')}
       <td class="col-total" style="color:var(--azul)">${copFull(granTotal)}</td>
       <td class="col-acum" style="color:var(--azul);font-weight:800">${copFull(granTotal)}</td>
-      <td class="col-meta-exp" style="color:var(--azul);font-weight:800">${metaAnualTotal > 0 ? copFull(metaAnualTotal) : '—'}</td>
-      <td class="col-cumpl" style="color:${cumplFinalColor};font-weight:800">${metaAnualTotal > 0 ? cumplFinalPct + '%' : '—'}</td>
+      <td class="col-meta-exp" style="color:var(--azul);font-weight:800">${meta.anual > 0 ? copFull(meta.anual) : '—'}</td>
+      <td class="col-cumpl" style="color:${cumplFinalColor};font-weight:800">${meta.anual > 0 ? cumplFinalPct + '%' : '—'}</td>
     </tr>`;
 
   // ── Tabla resumen inferior (FIJO / OCASIONAL / TOTAL) ─────────────
@@ -849,6 +889,7 @@ function renderAiu(d, mes) {
       <td style="text-align:right;color:var(--azul-med);font-weight:600">${hasDatos ? copFull(m.totalTarifa) : '—'}</td>
       <td style="text-align:right;color:var(--rojo)">${hasDatos ? copFull(m.totalCosto) : '—'}</td>
       <td style="text-align:right;color:var(--gris-med)">${hasDatos ? copFull(m.aiuAbsoluto) : '—'}</td>
+      <td style="text-align:right;color:var(--azul);font-weight:700">${hasDatos ? copFull(m.totalAnioCorte) : '—'}</td>
       <td style="text-align:right;font-weight:700">${hasDatos ? copFull(m.totalCotizacion) : '—'}</td>
       <td style="text-align:center;font-weight:800;font-size:1.05em;color:${pctColor}">${hasDatos ? pctAiu.toFixed(2) + '%' : '—'}</td>
     </tr>`;
@@ -876,6 +917,7 @@ function renderAiu(d, mes) {
       <td style="text-align:right;color:var(--azul-med)">${copFull(d.totalTarifa)}</td>
       <td style="text-align:right;color:var(--rojo)">${copFull(d.totalCosto)}</td>
       <td style="text-align:right;color:var(--gris-med)">${copFull(d.aiuAbsoluto)}</td>
+      <td style="text-align:right;color:var(--azul);font-weight:800">${copFull(d.totalAnioCorte)}</td>
       <td style="text-align:right;font-weight:700">${copFull(d.totalCotizacion)}</td>
       <td style="text-align:center;font-weight:800;font-size:1.1em;color:${pctColor}">${pct.toFixed(2)}%</td>
     </tr>`;
@@ -900,10 +942,7 @@ function renderForecastResumen(d, vista) {
   // ── Meta mensual por mes: empresa o consultor filtrado ──────────────
   // META MENSUAL ESCALERA: metaMensual[mes] / mesesRestantes_incluyendo_ese_mes
   // ENE: $1,430M / 12 = $119.166.667 | FEB: $1,430M / 11 = $130.000.000 ...
-  let baseMeta = metaMensualPorMes;  // [12] empresa por defecto
-  if (filtroFcConsultor && metaMensualPorConsultor[filtroFcConsultor]) {
-    baseMeta = metaMensualPorConsultor[filtroFcConsultor];
-  }
+  let baseMeta = metasVigentes().mensual;   // [v6] empresa o consultor filtrado
   const metaEscalera = baseMeta.map((m, i) => {
     const mesesRest = 12 - i;   // ENE=12, FEB=11, MAR=10 … DIC=1
     return mesesRest > 0 ? m / mesesRest : 0;

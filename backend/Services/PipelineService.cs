@@ -311,62 +311,31 @@ public class PipelineService
     {
         using var conn = _db.CreateConnection();
 
+        // [v6] FUENTE ÚNICA DEL CORTE ANUAL: CRM.VW_ContratoCorteAnual.
+        //
+        // Antes esta consulta calculaba el mes final con IdMesFin, que es una
+        // columna módulo-12 SIN año. Para cualquier contrato que cruzara
+        // diciembre el mes final quedaba ANTES del inicial (junio + 24 meses
+        // → IdMesFin = 5 = MAYO), el ciclo de meses no se ejecutaba ni una vez
+        // y la venta aportaba $0: desaparecía del cuadro de mando aunque
+        // estuviera correctamente guardada en la base.
+        //
+        // La vista ya entrega el tramo recortado al año (MesInicioAnio,
+        // MesFinAnio) y cuántos meses se salen hacia adelante.
         var contratos = await conn.QueryAsync(@"
-            -- ── Usa IdMesInicio / IdMesFin (campos de la oportunidad) ──────────
-            -- IdMesInicio = mes de inicio configurado por el usuario (1–12)
-            -- IdMesFin    = columna COMPUTED: (IdMesInicio-1+TiempoMeses-1)%12+1
-            -- Esto evita el bug de contar meses extra por el día de corte:
-            --   Ej: inicio=ENE(1), TiempoMeses=3 → IdMesFin=3 (MAR) ✓
-            --       FechaFinServicio=20/abr → MONTH=4 → contaba 4 meses ❌
             SELECT
-                ISNULL(IdMesInicio,
-                    MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))  AS MesCohorte,
-                ISNULL(IdMesInicio,
-                    MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))  AS MesInicio,
-                -- MesFinClip: IdMesFin clipeado a 12 si supera el año
-                -- [v5] ISNULL exterior: TiempoMeses puede ser NULL (oportunidad
-                --      creada en fase de Contacto). Sin este blindaje el CASE
-                --      devolvía NULL y el cast (int) en C# reventaba el forecast.
-                --      Fallback = mes de inicio (contrato de 1 mes).
-                ISNULL(
-                    CASE
-                        WHEN IdMesFin IS NOT NULL
-                            THEN CASE WHEN IdMesFin > 12 THEN 12 ELSE IdMesFin END
-                        WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) > @Anio
-                            THEN 12
-                        WHEN FechaFinServicio IS NOT NULL AND YEAR(FechaFinServicio) = @Anio
-                            THEN MONTH(FechaFinServicio) - 1   -- -1 para excluir mes parcial final
-                        ELSE
-                            CASE
-                                WHEN MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1 > 12
-                                THEN 12
-                                ELSE MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
-                            END
-                    END,
-                    ISNULL(IdMesInicio, MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))
-                ) AS MesFinClip,
-                -- MesFinReal: para calcular meses fuera del año (perdidos)
-                ISNULL(
-                    CASE
-                        WHEN IdMesFin IS NOT NULL
-                            THEN IdMesFin
-                        WHEN FechaFinServicio IS NOT NULL
-                            THEN MONTH(FechaFinServicio) - 1 + (YEAR(FechaFinServicio) - @Anio) * 12
-                        ELSE
-                            MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) + TiempoMeses - 1
-                    END,
-                    ISNULL(IdMesInicio, MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)))
-                ) AS MesFinReal,
+                MesInicioAnio     AS MesCohorte,
+                MesInicioAnio     AS MesInicio,
+                MesFinAnio        AS MesFinClip,
+                MesesFueraDelAnio,
                 ValorMensual,
                 ConsultorActual,
                 CASE WHEN UPPER(ModalidadContrato) LIKE 'FIJ%' THEN 1 ELSE 0 END AS EsFijo
-            FROM CRM.VW_OportunidadesActuales
-            WHERE TipoCierre = 'GANADA'
+            FROM CRM.VW_ContratoCorteAnual
+            WHERE Anio        = @Anio
+              AND AnioInicio  = @Anio        -- escalera = ventas nuevas de este año
+              AND TipoCierre  = 'GANADA'
               AND UPPER(TipoCliente) IN ('NUEVO', 'PROFUNDIZACION')
-              AND ISNULL(IdMesInicio,
-                    MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro))) BETWEEN 1 AND 12
-              AND YEAR(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) = @Anio
-              AND (FechaFinServicio IS NULL OR YEAR(FechaFinServicio) >= @Anio)
               AND (@Consultor IS NULL OR ConsultorActual = @Consultor)",
             new { Anio = anio, Consultor = string.IsNullOrWhiteSpace(consultor) ? null : consultor.Trim() });
 
@@ -375,10 +344,11 @@ public class PipelineService
         // Lista de consultores únicos presentes en el año (para el dropdown)
         var consultoresAnio = await conn.QueryAsync<string>(@"
             SELECT DISTINCT ConsultorActual
-            FROM CRM.VW_OportunidadesActuales
-            WHERE TipoCierre = 'GANADA'
+            FROM CRM.VW_ContratoCorteAnual
+            WHERE Anio       = @Anio
+              AND AnioInicio = @Anio
+              AND TipoCierre = 'GANADA'
               AND UPPER(TipoCliente) IN ('NUEVO', 'PROFUNDIZACION')
-              AND YEAR(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) = @Anio
             ORDER BY ConsultorActual", new { Anio = anio });
 
         var celdas  = new decimal[12, 12];
@@ -394,7 +364,6 @@ public class PipelineService
             int cohort  = (int)c.MesCohorte - 1;
             int mesIni  = (int)c.MesInicio;
             int mesFinC = (int)c.MesFinClip;
-            int mesFinR = (int)c.MesFinReal;
             decimal vm  = (decimal)(c.ValorMensual ?? 0);
             bool esFijo = (int)c.EsFijo == 1;
 
@@ -405,7 +374,8 @@ public class PipelineService
                 else        celdasO[cohort, m - 1] += vm;
             }
 
-            int perdidos = Math.Max(0, mesFinR - 12);
+            // [v6] Meses que se salen del año de corte: ya vienen calculados.
+            int perdidos = (int)c.MesesFueraDelAnio;
             totalMesesPerdidos += perdidos;
             valorMesesPerdidos += perdidos * vm;
         }
@@ -489,23 +459,27 @@ public class PipelineService
     {
         using var conn = _db.CreateConnection();
 
-        // Base WHERE conditions compartidas
+        // [v6] Se consulta CRM.VW_ContratoCorteAnual — la misma fuente que el
+        // forecast — para que "TOTAL AÑO DE CORTE" y la escalera nunca puedan
+        // discrepar. La vista ya recorta cada contrato al año consultado.
         const string baseWhere = @"
-            TipoCierre = 'GANADA'
-            AND UPPER(TipoCliente) IN ('NUEVO', 'PROFUNDIZACION')
-            AND YEAR(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) = @Anio";
+            Anio        = @Anio
+            AND AnioInicio  = @Anio
+            AND TipoCierre  = 'GANADA'
+            AND UPPER(TipoCliente) IN ('NUEVO', 'PROFUNDIZACION')";
 
         // Datos mensuales completos (siempre los 12 meses para la tabla)
         var rowsMes = await conn.QueryAsync($@"
             SELECT
-                MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) AS Mes,
-                COUNT(*)                                                 AS Cantidad,
-                SUM(ValorMensual)                                        AS TotalTarifa,
-                SUM(Costo)                                               AS TotalCosto,
-                SUM(MontoTotalDuracion)                                  AS TotalCotizacion
-            FROM CRM.VW_OportunidadesActuales
+                MesInicioAnio                        AS Mes,
+                COUNT(*)                             AS Cantidad,
+                SUM(ValorMensual)                    AS TotalTarifa,
+                SUM(Costo)                           AS TotalCosto,
+                SUM(ValorEnAnio)                     AS TotalAnioCorte,
+                SUM(ValorTotalContrato)              AS TotalCotizacion
+            FROM CRM.VW_ContratoCorteAnual
             WHERE {baseWhere}
-            GROUP BY MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro))
+            GROUP BY MesInicioAnio
             ORDER BY Mes",
             new { Anio = anio });
 
@@ -517,6 +491,7 @@ public class PipelineService
             decimal tar   = found ? (decimal)(r!.TotalTarifa     ?? 0) : 0;
             decimal cos   = found ? (decimal)(r!.TotalCosto      ?? 0) : 0;
             decimal cot   = found ? (decimal)(r!.TotalCotizacion ?? 0) : 0;
+            decimal corte = found ? (decimal)(r!.TotalAnioCorte  ?? 0) : 0;
             decimal aiuAb = tar - cos;
             decimal aiuPc = cot > 0 ? Math.Round(aiuAb / cot * 100, 2) : 0;
             return new AiuMensualDto
@@ -527,6 +502,7 @@ public class PipelineService
                 TotalTarifa     = tar,
                 TotalCosto      = cos,
                 TotalCotizacion = cot,
+                TotalAnioCorte  = corte,
                 AiuAbsoluto     = aiuAb,
                 PorcentajeAiu   = aiuPc
             };
@@ -534,7 +510,7 @@ public class PipelineService
 
         // Totales para el período seleccionado (filtro por mes o todo el año)
         var condMes   = (mes.HasValue && mes.Value > 0)
-                        ? "AND MONTH(ISNULL(FechaInicioServicio, FechaPrimerRegistro)) = @Mes"
+                        ? "AND MesInicioAnio = @Mes"
                         : "";
 
         var rowTotal  = await conn.QueryFirstAsync($@"
@@ -542,8 +518,9 @@ public class PipelineService
                 COUNT(*)                AS Cantidad,
                 SUM(ValorMensual)       AS TotalTarifa,
                 SUM(Costo)              AS TotalCosto,
-                SUM(MontoTotalDuracion) AS TotalCotizacion
-            FROM CRM.VW_OportunidadesActuales
+                SUM(ValorEnAnio)        AS TotalAnioCorte,
+                SUM(ValorTotalContrato) AS TotalCotizacion
+            FROM CRM.VW_ContratoCorteAnual
             WHERE {baseWhere}
               {condMes}",
             new { Anio = anio, Mes = mes });
@@ -551,6 +528,7 @@ public class PipelineService
         decimal tTar  = (decimal)(rowTotal.TotalTarifa     ?? 0);
         decimal tCos  = (decimal)(rowTotal.TotalCosto      ?? 0);
         decimal tCot  = (decimal)(rowTotal.TotalCotizacion ?? 0);
+        decimal tCorte= (decimal)(rowTotal.TotalAnioCorte  ?? 0);
         decimal tAiuA = tTar - tCos;
         decimal tAiuP = tCot > 0 ? Math.Round(tAiuA / tCot * 100, 2) : 0;
 
@@ -562,6 +540,7 @@ public class PipelineService
             TotalTarifa     = tTar,
             TotalCosto      = tCos,
             TotalCotizacion = tCot,
+            TotalAnioCorte  = tCorte,
             AiuAbsoluto     = tAiuA,
             PorcentajeAiu   = tAiuP,
             Mensual         = mensual

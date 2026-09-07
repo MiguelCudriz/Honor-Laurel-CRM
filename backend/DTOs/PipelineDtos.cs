@@ -191,9 +191,18 @@ public class AiuMensualDto
     public int     Cantidad        { get; set; }
     public decimal TotalTarifa     { get; set; }   // SUM(ValorMensual) — tarifa mensual
     public decimal TotalCosto      { get; set; }   // SUM(Costo)
-    public decimal TotalCotizacion { get; set; }   // SUM(MontoTotalDuracion) — monto total contrato
+    public decimal TotalCotizacion { get; set; }   // ValorMensual * DuracionMeses — monto total contrato
+
+    /// <summary>
+    /// [v6] TOTAL AÑO DE CORTE: ValorMensual * meses del contrato que caen
+    /// dentro del año consultado. Un contrato de 36 meses que arranca en junio
+    /// aporta aquí solo junio–diciembre de ese año, no los 36 meses.
+    /// Se calcula en CRM.VW_ContratoCorteAnual (única fuente del corte).
+    /// </summary>
+    public decimal TotalAnioCorte  { get; set; }
+
     public decimal AiuAbsoluto     { get; set; }   // TotalTarifa - TotalCosto
-    public decimal PorcentajeAiu   { get; set; }   // (AiuAbsoluto / TotalCotizacion) * 100
+    public decimal PorcentajeAiu   { get; set; }   // (AiuAbsoluto / TotalTarifa) * 100
 }
 
 public class AiuResumenDto
@@ -204,6 +213,7 @@ public class AiuResumenDto
     public decimal TotalTarifa     { get; set; }
     public decimal TotalCosto      { get; set; }
     public decimal TotalCotizacion { get; set; }
+    public decimal TotalAnioCorte  { get; set; }   // [v6] total facturable dentro del año de corte
     public decimal AiuAbsoluto     { get; set; }
     public decimal PorcentajeAiu   { get; set; }
     public List<AiuMensualDto> Mensual { get; set; } = new();
