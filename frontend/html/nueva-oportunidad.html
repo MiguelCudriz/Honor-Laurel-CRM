@@ -211,28 +211,27 @@
     <!-- ══════════ PASO 4: RESTO DEL FORMULARIO (se despliega automáticamente) ══════════ -->
     <div id="restoFormulario" style="display:none">
 
-      <!-- SECCIÓN: DATOS DE LA OPORTUNIDAD -->
-      <div class="card">
+      <!-- ══════════ BLOQUE · CONTRATO Y SERVICIO ══════════ -->
+      <div class="card" data-seccion>
         <div class="card-header">
-          <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-file-text"></i></div>
-          <h3>Datos de la Oportunidad</h3>
+          <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-file-earmark-text"></i></div>
+          <h3>Contrato y Servicio</h3>
           <span class="verde-tag" id="badgeFaseElegida">FASE</span>
         </div>
         <div class="card-body">
-
-          <!-- ── Sección: contrato y servicio ── -->
-          <div class="form-seccion">
-            <h4 class="seccion-titulo"><i class="bi bi-file-earmark-text"></i> Contrato y servicio</h4>
           <div class="form-grid three">
+
             <div class="field" id="grpCotizacion">
               <label><i class="bi bi-upc-scan"></i> N° Cotización <span class="req" id="reqCotizacion" style="display:none">✦</span></label>
               <input type="text" id="numeroCotizacion" placeholder="Ej: DENXXX-XXXX-XXXX" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
               <span class="hint" id="hintCotizacion"><i class="bi bi-info-circle me-1"></i>Opcional en esta fase</span>
             </div>
+
             <div class="field">
               <label><i class="bi bi-shield-check"></i> Servicio <span class="req">✦</span></label>
               <select id="idServicio" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
+
             <div class="field" id="grpModalidad">
               <label><i class="bi bi-layers"></i> Modalidad <span class="req">✦</span></label>
               <select id="idModalidad" autocomplete="off"><option value="">— Seleccionar —</option></select>
@@ -244,18 +243,27 @@
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Máximo 72 meses</span>
             </div>
 
-          </div>
-          </div>
+            <div class="field" id="grpLicitacion">
+              <label><i class="bi bi-bank"></i> ¿Es Licitación?</label>
+              <select id="esLicitacion" autocomplete="off">
+                <option value="false">No</option>
+                <option value="true">Sí</option>
+              </select>
+            </div>
 
-          <!-- ── Sección: vigencia del servicio ── -->
-          <div class="form-seccion">
-            <h4 class="seccion-titulo">
-              <i class="bi bi-calendar-week"></i> Vigencia del servicio
-              <span class="seccion-nota">La fecha de fin se calcula sola</span>
-            </h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ BLOQUE · VIGENCIA DEL SERVICIO ══════════ -->
+      <div class="card" data-seccion>
+        <div class="card-header">
+          <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-calendar-week"></i></div>
+          <h3>Vigencia del Servicio</h3>
+        </div>
+        <div class="card-body">
           <div class="form-grid three">
 
-            <!-- MES INICIO -->
             <div class="field" id="grpMesInicio">
               <label><i class="bi bi-calendar-month"></i> Mes Inicio Servicio</label>
               <select id="mesInicioServicio" onchange="calcularMesFinServicio()" autocomplete="off">
@@ -275,16 +283,11 @@
               </select>
             </div>
 
-            <!-- MES FIN: derivado de Mes Inicio + Tiempo. Oculto, sigue calculándose. -->
-            <div class="field campo-oculto" id="grpMesFin">
-              <label><i class="bi bi-calendar-check"></i> Mes Fin Servicio</label>
-              <input type="text" id="mesFinServicio" readonly autocomplete="off">
-            </div>
-
             <div class="field" id="grpFechaInicio">
               <label><i class="bi bi-calendar-event"></i> Fecha Inicio Servicio</label>
               <input type="date" id="fechaInicioServicio" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
+
             <div class="field" id="grpFechaFin">
               <label>
                 <i class="bi bi-calendar-x"></i> Fecha Fin Servicio
@@ -299,23 +302,14 @@
                 Se calcula: Fecha Inicio + Tiempo (meses) − 1 día
               </span>
             </div>
-          </div>
-          </div>
 
-          <!-- ── Sección: condiciones ── -->
-          <div class="form-seccion">
-            <h4 class="seccion-titulo"><i class="bi bi-bank"></i> Condiciones</h4>
-          <div class="form-grid three">
-            <div class="field" id="grpLicitacion">
-              <label><i class="bi bi-bank"></i> ¿Es Licitación?</label>
-              <select id="esLicitacion" autocomplete="off">
-                <option value="false">No</option>
-                <option value="true">Sí</option>
-              </select>
+            <!-- MES FIN: derivado de Mes Inicio + Tiempo. Oculto, sigue calculándose. -->
+            <div class="field campo-oculto" id="grpMesFin">
+              <label><i class="bi bi-calendar-check"></i> Mes Fin Servicio</label>
+              <input type="text" id="mesFinServicio" readonly autocomplete="off">
             </div>
-          </div>
-          </div>
 
+          </div>
         </div>
       </div>
 
@@ -323,7 +317,7 @@
       <div class="card">
         <div class="card-header">
           <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-geo-alt"></i></div>
-          <h3>Ubicación del Servicio y Consultor</h3>
+          <h3>Ubicación del Servicio</h3>
         </div>
         <div class="card-body">
           <div class="form-grid">
@@ -348,7 +342,7 @@
       <div class="card">
         <div class="card-header">
           <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-currency-dollar"></i></div>
-          <h3>Registro Comercial de la Oportunidad</h3>
+          <h3>Valores de la Oportunidad</h3>
         </div>
         <div class="card-body">
           <div class="form-grid">

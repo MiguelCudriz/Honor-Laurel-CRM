@@ -133,6 +133,28 @@ function copFull(val) {
   return '$' + Number(val || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
 }
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+/* [v8] ESTADO VACÍO POR AÑO DE CORTE
+   ────────────────────────────────────────────────────────────────
+   Cuando el año seleccionado no tiene datos, la API responde vacío
+   y cada render debe DEJAR SU INDICADOR EN CERO. Antes hacían
+   `if (!data.length) return;` y se quedaba pintado lo del año
+   anterior: al pasar a 2027 seguían viéndose las cifras de 2026.
+   Estos tres helpers evitan repetir el mismo bloque 8 veces.      */
+const MSG_SIN_DATOS = 'Sin datos para el año seleccionado';
+
+function limpiarCharts(...ids) { ids.forEach(destroyChart); }
+
+function ponerTexto(id, txt) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = txt;
+}
+
+function ponerVacio(id, mensaje = MSG_SIN_DATOS) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML =
+    `<div class="sin-datos-msg"><i class="bi bi-inbox"></i> ${mensaje}</div>`;
+}
 function scrollTo(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
 
 /* ══════════════════════════════════════════════════════════════
@@ -266,7 +288,7 @@ function _setActivosFiltro(groupId, valor) {
    KPIs
 ══════════════════════════════════════════════════════════════ */
 function renderKpis(d) {
-  if (!d) return;
+  d = d || {};   // [v8] sin datos = KPIs en cero, no los del año anterior
   document.getElementById('kpiTotal').textContent         = d.totalOportunidades ?? 0;
   document.getElementById('kpiGanadas').textContent       = d.ganadas            ?? 0;
   document.getElementById('kpiPerdidas').textContent      = d.perdidas           ?? 0;
@@ -285,7 +307,11 @@ function renderKpis(d) {
    • Botón de pantalla completa
 ══════════════════════════════════════════════════════════════ */
 function renderFunnel(data) {
-  if (!data?.length) return;
+  if (!data?.length) {
+    ponerVacio('funnelSvg');
+    ponerTexto('subtFunnel', '0 oportunidades');
+    return;
+  }
 
   const container = document.getElementById('funnelSvg');
   container.innerHTML = '';
@@ -485,7 +511,7 @@ function toggleFunnelFullscreen() {
    MODALIDAD (dona)
 ══════════════════════════════════════════════════════════════ */
 function renderModalidad(data) {
-  if (!data?.length) return;
+  if (!data?.length) { limpiarCharts('modalidad'); ponerVacio('legendModalidad'); return; }
   destroyChart('modalidad');
   const colores = [C.azul, C.naranja, C.verde, C.purpura];
   const ctx = document.getElementById('chartModalidad').getContext('2d');
@@ -513,7 +539,7 @@ function renderModalidad(data) {
    POR CONSULTOR
 ══════════════════════════════════════════════════════════════ */
 function renderConsultor(data) {
-  if (!data?.length) return;
+  if (!data?.length) { limpiarCharts('consultor'); return; }
   destroyChart('consultor');
   const labels = data.map(d => d.consultor.split(' ').slice(0, 2).join(' '));
   charts.consultor = new Chart(document.getElementById('chartConsultor').getContext('2d'), {
@@ -543,7 +569,7 @@ function renderConsultor(data) {
    EVOLUCIÓN MENSUAL
 ══════════════════════════════════════════════════════════════ */
 function renderEvolucion(data) {
-  if (!data?.length) return;
+  if (!data?.length) { limpiarCharts('evolucion', 'evolucionValor'); return; }
   destroyChart('evolucion'); destroyChart('evolucionValor');
   const labels = data.map(d => d.nombreMes.slice(0, 3).toUpperCase());
 
@@ -700,9 +726,15 @@ function renderTopClientes(data) {
 const MESES_ABR = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 function poblarDropdownConsultor(d) {
-  if (!d) return;
   const sel = document.getElementById('selectFcConsultor');
   if (!sel) return;
+
+  // [v8] Sin datos del año: el desplegable vuelve a "Todos los consultores"
+  // en lugar de conservar la lista del año anterior.
+  if (!d) {
+    sel.innerHTML = '<option value="">— Todos los consultores —</option>';
+    return;
+  }
   const prev = sel.value;
   sel.innerHTML = '<option value="">— Todos los consultores —</option>';
   (d.consultores || []).forEach(c => {
@@ -1041,73 +1073,76 @@ function renderForecastResumen(d, vista) {
    EFECTIVIDAD DE OFERTAS
 ══════════════════════════════════════════════════════════════ */
 function renderEfectividad(data) {
+  const thead = document.getElementById('efectividadHead');
   const tbody = document.getElementById('efectividadBody');
-  if (!tbody) return;
+  if (!tbody || !thead) return;
 
-  // Umbrales de color (igual imagen de referencia)
-  //   ≤ 10%          → ROJO  (no cumple)
-  //   10.1% - 11%    → VERDE claro (cumple)
-  //   > 11%          → VERDE oscuro (supera)
+  // Umbrales de color
+  //   ≤ 10%        → ROJO         (no cumple)
+  //   10.1% - 11%  → VERDE claro  (cumple)
+  //   > 11%        → VERDE oscuro (supera)
   const colorPct = pct => {
-    if (pct <= 10)  return { bg: '#D93025', label: 'NO CUMPLE',  text: '#fff' };
-    if (pct <= 11)  return { bg: '#5CB85C', label: 'CUMPLE',     text: '#fff' };
-    return               { bg: '#2A8C38', label: 'SUPERA',     text: '#fff' };
+    if (pct <= 10) return { bg: '#D93025', label: 'NO CUMPLE' };
+    if (pct <= 11) return { bg: '#5CB85C', label: 'CUMPLE'    };
+    return           { bg: '#2A8C38', label: 'SUPERA'    };
   };
 
-  const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                      'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  // Encabezado: meses en columnas + acumulado, como el cuadro de Forecast
+  thead.innerHTML = `<tr>
+    <th>Indicador</th>
+    ${MESES_ABR.map(m => `<th class="mes-col">${m}</th>`).join('')}
+    <th class="total-col">ACUMULADO</th>
+  </tr>`;
 
   if (!data || !data.length) {
-    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;color:#8896B0;padding:24px">
-      Sin datos de efectividad para el período seleccionado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:#8896B0;padding:22px">
+      ${MSG_SIN_DATOS}</td></tr>`;
     return;
   }
 
-  // Construir mapa por mes para llenar todos los 12 meses
+  // Mapa por mes para cubrir los 12 aunque la API devuelva solo algunos
   const mapa = {};
-  data.forEach(d => { mapa[d.mes || d.Mes] = d; });
+  data.forEach(d => { mapa[d.mes ?? d.Mes] = d; });
 
-  let rows = '';
-  let sumPct = 0; let countMes = 0;
+  const ofertas = [], ventas = [], pcts = [];
+  for (let m = 1; m <= 12; m++) {
+    const r = mapa[m];
+    ofertas.push(r ? (r.totalMayor40 ?? r.TotalMayor40 ?? 0) : 0);
+    ventas .push(r ? (r.totalVenta   ?? r.TotalVenta   ?? 0) : 0);
+    pcts   .push(r ? parseFloat(r.efectividadPct ?? r.EfectividadPct ?? 0) : null);
+  }
 
-  MESES_FULL.forEach((nombre, i) => {
-    const mes  = i + 1;
-    const row  = mapa[mes];
-    if (!row) {
-      rows += `<tr>
-        <td class="efect-periodo">${nombre}</td>
-        <td class="efect-resultado efect-sin-datos">—</td>
-      </tr>`;
-      return;
-    }
-    const pct   = parseFloat(row.efectividadPct ?? row.EfectividadPct ?? 0);
-    const col   = colorPct(pct);
-    sumPct += pct; countMes++;
-    rows += `<tr>
-      <td class="efect-periodo">${nombre}</td>
-      <td class="efect-resultado">
-        <span class="efect-pill" style="background:${col.bg};color:${col.text}">
-          ${pct.toFixed(1)}%
-        </span>
-        <span class="efect-label" style="color:${col.bg}">${col.label}</span>
-      </td>
-    </tr>`;
-  });
+  const totOfertas = ofertas.reduce((a, b) => a + b, 0);
+  const totVentas  = ventas .reduce((a, b) => a + b, 0);
+  // Acumulado real = ventas del año / ofertas del año.
+  // No es el promedio de los 12 porcentajes: eso le daría el mismo peso a un
+  // mes con 1 oferta que a uno con 40.
+  const pctAcum    = totOfertas > 0 ? (totVentas / totOfertas) * 100 : 0;
+  const colAcum    = colorPct(pctAcum);
 
-  // Promedio / acumulado
-  const promedio = countMes > 0 ? (sumPct / countMes).toFixed(1) : 0;
-  const colProm  = colorPct(parseFloat(promedio));
-  rows += `<tr class="efect-promedio-row">
-    <td class="efect-periodo"><strong>PROMEDIO / ACUMULADO</strong></td>
-    <td class="efect-resultado">
-      <span class="efect-pill efect-pill-lg" style="background:${colProm.bg};color:${colProm.text}">
-        ${promedio}%
-      </span>
-    </td>
+  const filaConteo = (label, arr, total, clase) => `<tr class="${clase}">
+    <td>${label}</td>
+    ${arr.map(v => `<td class="${v ? 'celda-activa' : 'celda-vacia'}">${v || '—'}</td>`).join('')}
+    <td class="col-total">${total}</td>
   </tr>`;
 
-  tbody.innerHTML = rows;
+  tbody.innerHTML =
+    filaConteo('OFERTAS ≥ 40%', ofertas, totOfertas, 'efect-row-ofertas') +
+    filaConteo('VENTAS GANADAS', ventas, totVentas, 'efect-row-ventas') +
+    `<tr class="efect-row-pct">
+      <td>% EFECTIVIDAD</td>
+      ${pcts.map((p, i) => {
+        if (p === null || ofertas[i] === 0)
+          return '<td class="celda-vacia">—</td>';
+        const c = colorPct(p);
+        return `<td><span class="efect-pill" style="background:${c.bg}">${p.toFixed(1)}%</span></td>`;
+      }).join('')}
+      <td class="col-total">
+        <span class="efect-pill efect-pill-lg" style="background:${colAcum.bg}">${pctAcum.toFixed(1)}%</span>
+      </td>
+    </tr>`;
 }
+
 
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE

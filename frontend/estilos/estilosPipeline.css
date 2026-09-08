@@ -692,48 +692,38 @@ body {
   text-transform: uppercase; white-space: nowrap;
 }
 
-.efect-table {
-  width: 100%; border-collapse: collapse; font-size: 0.9rem;
-}
-.efect-table thead tr {
-  background: var(--gris-suave); border-bottom: 2px solid var(--gris-borde);
-}
-.efect-table thead th {
-  padding: 10px 20px; font-size: 0.68rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.09em; color: #8896B0; text-align: left;
-}
-.efect-table tbody tr {
-  border-bottom: 1px solid var(--gris-borde);
-  transition: background 0.15s;
-}
-.efect-table tbody tr:hover { background: #FAFBFE; }
-.efect-table tbody tr:last-child { border-bottom: none; }
+/* [v8] Lectura horizontal con el mismo lenguaje visual del cuadro de
+   Forecast: la tabla lleva las clases .forecast-table .efect-table, así que
+   hereda cabecera azul, celdas y columna de total. Aquí solo van las
+   diferencias propias del indicador. */
+.efect-table { min-width: 980px; }
 
-.efect-periodo {
-  padding: 11px 20px; font-weight: 600; color: var(--texto); width: 45%;
+.efect-table thead th.total-col { min-width: 120px; }
+
+/* Las tres filas se distinguen por tono, como FIJO / OCASIONAL en Forecast */
+.efect-table tbody .efect-row-ofertas td { color: var(--azul-med); }
+.efect-table tbody .efect-row-ventas  td { color: var(--verde-dark); }
+.efect-table tbody .efect-row-ventas  td:first-child { background: rgba(57,181,74,0.08); }
+
+.efect-table tbody .efect-row-pct td {
+  padding: 8px 6px;
+  border-top: 2px solid var(--azul);
+  text-align: center;
 }
-.efect-resultado {
-  padding: 9px 20px; display: flex; align-items: center; gap: 10px;
+.efect-table tbody .efect-row-pct td:first-child {
+  text-align: left;
+  background: rgba(0,48,135,0.08);
+  color: var(--azul);
 }
-.efect-sin-datos { color: #C5CFDF; font-weight: 400; }
+.efect-table tbody tr:last-child td { border-bottom: none; }
 
 .efect-pill {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 62px; padding: 5px 12px;
-  border-radius: 20px; font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1rem; font-weight: 800; letter-spacing: 0.04em;
+  min-width: 58px; padding: 4px 10px;
+  border-radius: 20px; color: #fff;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.92rem; font-weight: 800; letter-spacing: 0.03em;
   white-space: nowrap;
 }
-.efect-pill-lg { min-width: 72px; font-size: 1.1rem; }
-
-.efect-label {
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.efect-promedio-row {
-  background: rgba(0,48,135,0.04) !important;
-  border-top: 2px solid var(--azul) !important;
-}
-.efect-promedio-row .efect-periodo { color: var(--azul); }
+.efect-pill-lg { min-width: 68px; font-size: 1.05rem; }
 

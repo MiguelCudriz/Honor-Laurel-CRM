@@ -262,14 +262,14 @@ function onFaseSeleccionada() {
   setTimeout(() => resto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 }
 
-// Oculta el título de una sección cuando todos sus campos quedaron ocultos,
-// para no dejar encabezados sueltos (ej. "Vigencia del servicio" en las
-// fases de Contacto, donde no se piden fechas).
+// Oculta un bloque completo cuando todos sus campos quedaron ocultos, para no
+// dejar tarjetas con encabezado y nada dentro (ej. "Vigencia del Servicio" en
+// las fases de Contacto, donde no se piden fechas).
 function ajustarSecciones() {
-  document.querySelectorAll('.form-seccion').forEach(sec => {
-    const visibles = Array.from(sec.querySelectorAll('.field'))
+  document.querySelectorAll('[data-seccion]').forEach(bloque => {
+    const visibles = Array.from(bloque.querySelectorAll('.field'))
       .filter(f => !f.classList.contains('campo-oculto') && f.style.display !== 'none');
-    sec.style.display = visibles.length ? '' : 'none';
+    bloque.style.display = visibles.length ? '' : 'none';
   });
 }
 

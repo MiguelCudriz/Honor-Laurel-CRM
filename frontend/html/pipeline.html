@@ -378,17 +378,16 @@
         </div>
       </div>
       <div class="pipe-card-body" style="padding:0">
-        <table class="efect-table">
-          <thead>
-            <tr>
-              <th>Período</th>
-              <th>Resultado</th>
-            </tr>
-          </thead>
-          <tbody id="efectividadBody">
-            <tr><td colspan="2" class="loading-cell">Cargando...</td></tr>
-          </tbody>
-        </table>
+        <!-- [v8] Lectura horizontal: los meses son columnas, igual que el
+             cuadro de Forecast. Antes eran 13 filas apiladas. -->
+        <div class="forecast-table-scroll">
+          <table class="forecast-table efect-table">
+            <thead id="efectividadHead"></thead>
+            <tbody id="efectividadBody">
+              <tr><td colspan="14" class="loading-cell">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
