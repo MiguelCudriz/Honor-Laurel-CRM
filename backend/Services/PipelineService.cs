@@ -307,6 +307,36 @@ public class PipelineService
     //  FILTRO DE USUARIO:
     //  • @Consultor: si se suministra, filtra por ConsultorActual
     // ─────────────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// [v7] Años que el selector "Año de corte" debe ofrecer. Es la unión de:
+    ///   · años en los que un contrato factura (incluye los años futuros que
+    ///     alcanza un contrato multianual, vía CRM.VW_ContratoCorteAnual)
+    ///   · años con movimientos registrados
+    ///   · años con meta comercial configurada
+    ///   · el año en curso del SERVIDOR (no el del PC del usuario)
+    /// Así un contrato que arranca en 2027 aparece en cuanto se registra, y un
+    /// año con historia no desaparece del selector al pasar el tiempo.
+    /// </summary>
+    public async Task<IEnumerable<int>> GetAniosDisponiblesAsync()
+    {
+        using var conn = _db.CreateConnection();
+
+        return await conn.QueryAsync<int>(@"
+            SELECT DISTINCT Anio FROM (
+                SELECT Anio                    FROM CRM.VW_ContratoCorteAnual
+                UNION ALL
+                SELECT AnioInicio              FROM CRM.VW_ContratoCorteAnual
+                UNION ALL
+                SELECT AnioRegistro            FROM CRM.VW_OportunidadesActuales
+                UNION ALL
+                SELECT Anio                    FROM CRM.MetaAnual WHERE Activo = 1
+                UNION ALL
+                SELECT YEAR(GETDATE())
+            ) AS a
+            WHERE Anio BETWEEN 2020 AND 2050
+            ORDER BY Anio DESC");
+    }
+
     public async Task<ForecastDto> GetForecastAsync(int anio, string? consultor = null)
     {
         using var conn = _db.CreateConnection();

@@ -35,6 +35,17 @@ public class PipelineController : ControllerBase
 
     private static int AnioActual => DateTime.Today.Year;
 
+    /// <summary>
+    /// [v7] Años disponibles para el selector "Año de corte".
+    /// Antes la lista se generaba en el navegador con new Date().getFullYear()
+    /// y los 3 años anteriores: dependía del reloj del computador del usuario
+    /// y no mostraba un año hasta que llegara, aunque ya hubiera contratos
+    /// registrados con inicio en ese año.
+    /// </summary>
+    [HttpGet("anios")]
+    public async Task<IActionResult> GetAnios()
+        => Ok(ApiResponse<IEnumerable<int>>.Ok(await _svc.GetAniosDisponiblesAsync()));
+
     [HttpGet("resumen")]
     public async Task<IActionResult> GetResumen([FromQuery] int? anio)
         => Ok(ApiResponse<PipelineResumenDto>.Ok(

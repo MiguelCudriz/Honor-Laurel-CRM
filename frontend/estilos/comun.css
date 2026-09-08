@@ -1,0 +1,162 @@
+/* ============================================================================
+   comun.css — CRM Honor · Capa compartida
+   ----------------------------------------------------------------------------
+   Se carga DESPUÉS del CSS propio de cada página, en todas las páginas.
+   Contiene lo que antes se repetía (o faltaba) archivo por archivo:
+
+     1. Secciones de formulario  (.form-seccion / .seccion-titulo)
+     2. Campos ocultos que siguen existiendo en el DOM (.campo-oculto)
+     3. Capa responsive única para navbar, sidebar, contenido, grids y tablas
+
+   Al vivir en un solo archivo, un ajuste de layout se hace una vez y aplica
+   a las seis páginas.
+   ============================================================================ */
+
+/* ══════════════════════════════════════════════════════════════
+   1. SECCIONES DE FORMULARIO
+   Agrupan los campos por tema (Valores, Servicio, Ubicación…) en
+   lugar de un bloque único donde todo se mezcla.
+══════════════════════════════════════════════════════════════ */
+
+.form-seccion {
+  padding: 20px 0 4px;
+  border-top: 1px solid var(--gris-borde, #D0D9E8);
+}
+.form-seccion:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.seccion-titulo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 16px;
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--azul, #003087);
+}
+.seccion-titulo i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--gris-suave, #F4F6FA);
+  color: var(--azul-med, #004BB8);
+  font-size: 0.9rem;
+}
+.seccion-titulo .seccion-nota {
+  margin-left: auto;
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #8896B0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. CAMPOS OCULTOS
+   El campo sigue en el DOM y se sigue calculando y enviando a la
+   API: solo se le quita el ruido visual al usuario.
+   NO usar hidden="" ni quitar el input: el JS los necesita.
+══════════════════════════════════════════════════════════════ */
+
+.campo-oculto { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   3. RESPONSIVE
+══════════════════════════════════════════════════════════════ */
+
+/* Nada debe desbordar horizontalmente la ventana */
+html, body { max-width: 100%; overflow-x: hidden; }
+img, svg, canvas { max-width: 100%; }
+
+/* Cualquier tabla dentro de una tarjeta puede desplazarse */
+.table-card,
+.tabla-wrap,
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ── ≤1200px: los grids de 3 columnas bajan a 2 ───────────────── */
+@media (max-width: 1200px) {
+  .form-grid.three { grid-template-columns: 1fr 1fr; }
+  .content { padding: 28px 24px; }
+}
+
+/* ── ≤992px: el sidebar deja de ser columna y pasa a ser una
+      barra horizontal desplazable bajo el navbar ───────────────── */
+@media (max-width: 992px) {
+  .main-layout { flex-direction: column; }
+
+  .sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    position: static;
+  }
+  .sidebar-label,
+  .sidebar-divider { display: none !important; }
+  .sidebar-item {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+
+  .navbar { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 10px; }
+  .navbar img { height: 38px; }
+  .navbar-right { gap: 12px; margin-left: auto; }
+  .nav-links { display: none; }          /* la navegación queda en el sidebar */
+
+  .content { padding: 22px 16px; }
+  .card-body { padding: 20px; }
+}
+
+/* ── ≤768px: una sola columna en todos los formularios ─────────── */
+@media (max-width: 768px) {
+  .form-grid,
+  .form-grid.three,
+  .form-grid.one { grid-template-columns: 1fr; gap: 16px; }
+
+  .card-header { flex-wrap: wrap; gap: 8px; }
+  .card-header h3 { font-size: 1rem; }
+
+  .form-actions { flex-wrap: wrap; gap: 10px; }
+  .form-actions .btn { flex: 1 1 100%; justify-content: center; }
+
+  .form-seccion { padding-top: 16px; }
+  .seccion-titulo { font-size: 0.85rem; }
+  .seccion-titulo .seccion-nota { margin-left: 0; flex: 1 1 100%; }
+
+  .aiu-preview { grid-template-columns: 1fr 1fr !important; gap: 10px; }
+}
+
+/* ── ≤480px: teléfonos ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .content { padding: 16px 12px; }
+  .card-body { padding: 16px; }
+  .navbar img { height: 32px; }
+  .nav-user span { display: none; }
+  .aiu-preview { grid-template-columns: 1fr !important; }
+}
+
+/* iOS hace zoom automático si la fuente del input baja de 16px */
+@media (max-width: 768px) {
+  .field input,
+  .field select,
+  .field textarea { font-size: 16px; }
+}

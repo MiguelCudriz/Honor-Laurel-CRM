@@ -235,8 +235,10 @@ function onFaseSeleccionada() {
   const esContacto   = grupo === 'contacto';
   const esCotizacion = grupo === 'cotizacion';
 
-  // Campos que solo aplican fuera del grupo "contacto"
-  ['grpModalidad', 'grpTiempo', 'grpMesInicio', 'grpMesFin',
+  // Campos que solo aplican fuera del grupo "contacto".
+  // grpMesFin NO va en esta lista: es un campo derivado que ahora está
+  // siempre oculto por CSS (.campo-oculto). Se sigue calculando y enviando.
+  ['grpModalidad', 'grpTiempo', 'grpMesInicio',
    'grpFechaInicio', 'grpFechaFin', 'grpLicitacion',
    'grpValorMensual', 'grpCosto', 'grpAiuPreview'].forEach(id => {
     const el = document.getElementById(id);
@@ -255,8 +257,20 @@ function onFaseSeleccionada() {
     selFase.options[selFase.selectedIndex]?.text || 'FASE';
 
   resto.style.display = 'block';
+  ajustarSecciones();
   marcarPaso(4);
   setTimeout(() => resto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+// Oculta el título de una sección cuando todos sus campos quedaron ocultos,
+// para no dejar encabezados sueltos (ej. "Vigencia del servicio" en las
+// fases de Contacto, donde no se piden fechas).
+function ajustarSecciones() {
+  document.querySelectorAll('.form-seccion').forEach(sec => {
+    const visibles = Array.from(sec.querySelectorAll('.field'))
+      .filter(f => !f.classList.contains('campo-oculto') && f.style.display !== 'none');
+    sec.style.display = visibles.length ? '' : 'none';
+  });
 }
 
 // ── BÚSQUEDA CLIENTE ACTUAL — estilo Municipio (input + select resultados) ──

@@ -87,14 +87,39 @@ function normalizarNombre(str) {
 
 /* ── Selector de año ─────────────────────────────────────────── */
 const selectAnio = document.getElementById('selectAnio');
-(function poblarAnios() {
-  const hoy = new Date().getFullYear();
-  for (let y = hoy; y >= hoy - 3; y--) {
+
+// [v7] Los años los decide la BASE DE DATOS, no el reloj del navegador.
+// GET /api/pipeline/anios devuelve los años con contratos facturando, con
+// movimientos o con meta configurada, más el año en curso del servidor.
+// Si la API no responde se cae a la lista local para no dejar el selector
+// vacío, pero ese es el plan B, no el comportamiento normal.
+async function poblarAnios() {
+  let anios = [];
+  try {
+    const r = await fetch(`${API}/pipeline/anios`).then(x => x.json());
+    if (r.success && Array.isArray(r.data) && r.data.length) anios = r.data;
+  } catch (_) { /* se usa el respaldo */ }
+
+  if (!anios.length) {
+    const hoy = new Date().getFullYear();
+    anios = [hoy, hoy - 1, hoy - 2, hoy - 3];
+  }
+
+  const seleccionado = selectAnio.value;
+  selectAnio.innerHTML = '';
+  anios.forEach(y => {
     const o = document.createElement('option');
     o.value = y; o.textContent = y;
     selectAnio.appendChild(o);
-  }
-})();
+  });
+
+  // Se conserva la selección previa; si ya no existe, se usa el año en curso
+  // y si tampoco está, el más reciente de la lista.
+  const hoy = String(new Date().getFullYear());
+  selectAnio.value = anios.map(String).includes(seleccionado) ? seleccionado
+                   : anios.map(String).includes(hoy)          ? hoy
+                   : String(anios[0]);
+}
 
 /* ── Moneda ──────────────────────────────────────────────────── */
 function cop(val) {
@@ -1087,9 +1112,13 @@ function renderEfectividad(data) {
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE
 ══════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   Chart.defaults.font.family = 'Barlow';
   Chart.defaults.color       = '#6B7A9A';
   Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+  // [v7] Primero se resuelve la lista de años contra la BD y recién
+  // entonces se cargan los indicadores, para no pedir un año inexistente.
+  await poblarAnios();
   cargarTodo();
 });

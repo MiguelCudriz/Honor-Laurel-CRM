@@ -10,6 +10,7 @@
   <meta name="theme-color" content="#ffffff">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/frontend/estilos/estilosnueva.css">
+  <link rel="stylesheet" href="/frontend/estilos/comun.css">
 </head>
 <body>
 
@@ -102,7 +103,7 @@
           <div class="form-grid">
             <div class="field">
               <label><i class="bi bi-hash"></i> NIT <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional · solo números · máx. 13)</span></label>
-              <input type="text" id="nitNuevo" inputmode="numeric" maxlength="13" placeholder="XXXXXXXXXXXXX" oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)">
+              <input type="text" id="nitNuevo" inputmode="numeric" maxlength="13" placeholder="XXXXXXXXXXXXX" oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="field">
               <label><i class="bi bi-building"></i> Razón Social <span class="req">✦</span></label>
@@ -110,11 +111,11 @@
             </div>
             <div class="field">
               <label><i class="bi bi-diagram-3"></i> Sector Económico <span class="req">✦</span></label>
-              <select id="sectorNuevo"><option value="">— Seleccionar —</option></select>
+              <select id="sectorNuevo" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="field">
               <label><i class="bi bi-telephone"></i> Teléfono <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional)</span></label>
-              <input type="text" id="telNuevo" inputmode="tel" placeholder="Ej: 3001234567" maxlength="20" oninput="this.value=this.value.replace(/[^0-9+\-\s()]/g,'')">
+              <input type="text" id="telNuevo" inputmode="tel" placeholder="Ej: 3001234567" maxlength="20" oninput="this.value=this.value.replace(/[^0-9+\-\s()]/g,'')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="field">
               <label><i class="bi bi-envelope"></i> Correo Electrónico <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional)</span></label>
@@ -128,8 +129,8 @@
           <div class="form-grid">
             <div class="field col-full">
               <label><i class="bi bi-search"></i> Buscar por Razón Social o NIT <span class="req">✦</span></label>
-              <input type="text" id="buscarCliente" placeholder="Escribe mínimo 3 caracteres..." oninput="buscarClienteDebounce()">
-              <select id="selectResultadosCliente" size="1" style="display:none" onchange="elegirClienteDeResultados()">
+              <input type="text" id="buscarCliente" placeholder="Escribe mínimo 3 caracteres..." oninput="buscarClienteDebounce()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <select id="selectResultadosCliente" size="1" style="display:none" onchange="elegirClienteDeResultados()" autocomplete="off">
                 <option value="">— Resultados —</option>
               </select>
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Escribe y selecciona el cliente de la lista de resultados.</span>
@@ -146,7 +147,7 @@
           <div class="form-grid" style="margin-top:16px">
             <div class="field">
               <label><i class="bi bi-diagram-3"></i> Sector Económico <span class="req">✦</span></label>
-              <select id="sectorActual"><option value="">— Seleccionar —</option></select>
+              <select id="sectorActual" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
           </div>
         </div>
@@ -156,8 +157,8 @@
           <div class="form-grid">
             <div class="field col-full">
               <label><i class="bi bi-search"></i> Buscar Cliente por Razón Social o NIT <span class="req">✦</span></label>
-              <input type="text" id="buscarClienteProf" placeholder="Escribe mínimo 3 caracteres..." oninput="buscarClienteProfDebounce()">
-              <select id="selectResultadosClienteProf" size="1" style="display:none" onchange="elegirClienteProfDeResultados()">
+              <input type="text" id="buscarClienteProf" placeholder="Escribe mínimo 3 caracteres..." oninput="buscarClienteProfDebounce()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <select id="selectResultadosClienteProf" size="1" style="display:none" onchange="elegirClienteProfDeResultados()" autocomplete="off">
                 <option value="">— Resultados —</option>
               </select>
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Selecciona el cliente al que profundizarás el servicio.</span>
@@ -174,7 +175,7 @@
           <div class="form-grid" style="margin-top:16px">
             <div class="field">
               <label><i class="bi bi-diagram-3"></i> Sector Económico <span class="req">✦</span></label>
-              <select id="sectorProfundizacion"><option value="">— Seleccionar —</option></select>
+              <select id="sectorProfundizacion" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
           </div>
         </div>
@@ -197,7 +198,7 @@
         <div class="form-grid one">
           <div class="field">
             <label><i class="bi bi-signpost-split"></i> Fase actual <span class="req">✦</span></label>
-            <select id="idFaseVenta" onchange="onFaseSeleccionada()"><option value="">— Seleccionar —</option></select>
+            <select id="idFaseVenta" onchange="onFaseSeleccionada()" autocomplete="off"><option value="">— Seleccionar —</option></select>
             <span class="hint"><i class="bi bi-info-circle me-1"></i>Según la fase que elijas, solo te pediremos los datos realmente necesarios en esta etapa.</span>
           </div>
         </div>
@@ -218,31 +219,46 @@
           <span class="verde-tag" id="badgeFaseElegida">FASE</span>
         </div>
         <div class="card-body">
+
+          <!-- ── Sección: contrato y servicio ── -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo"><i class="bi bi-file-earmark-text"></i> Contrato y servicio</h4>
           <div class="form-grid three">
             <div class="field" id="grpCotizacion">
               <label><i class="bi bi-upc-scan"></i> N° Cotización <span class="req" id="reqCotizacion" style="display:none">✦</span></label>
-              <input type="text" id="numeroCotizacion" placeholder="Ej: DENXXX-XXXX-XXXX" style="text-transform:uppercase">
+              <input type="text" id="numeroCotizacion" placeholder="Ej: DENXXX-XXXX-XXXX" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
               <span class="hint" id="hintCotizacion"><i class="bi bi-info-circle me-1"></i>Opcional en esta fase</span>
             </div>
             <div class="field">
               <label><i class="bi bi-shield-check"></i> Servicio <span class="req">✦</span></label>
-              <select id="idServicio"><option value="">— Seleccionar —</option></select>
+              <select id="idServicio" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
             <div class="field" id="grpModalidad">
               <label><i class="bi bi-layers"></i> Modalidad <span class="req">✦</span></label>
-              <select id="idModalidad"><option value="">— Seleccionar —</option></select>
+              <select id="idModalidad" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
 
             <div class="field" id="grpTiempo">
               <label><i class="bi bi-calendar-range"></i> Tiempo (meses) <span class="req">✦</span></label>
-              <input type="number" id="tiempoMeses" placeholder="Ej: 12" min="1" max="72">
+              <input type="number" id="tiempoMeses" placeholder="Ej: 12" min="1" max="72" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Máximo 72 meses</span>
             </div>
+
+          </div>
+          </div>
+
+          <!-- ── Sección: vigencia del servicio ── -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-calendar-week"></i> Vigencia del servicio
+              <span class="seccion-nota">La fecha de fin se calcula sola</span>
+            </h4>
+          <div class="form-grid three">
 
             <!-- MES INICIO -->
             <div class="field" id="grpMesInicio">
               <label><i class="bi bi-calendar-month"></i> Mes Inicio Servicio</label>
-              <select id="mesInicioServicio" onchange="calcularMesFinServicio()">
+              <select id="mesInicioServicio" onchange="calcularMesFinServicio()" autocomplete="off">
                 <option value="">— Seleccionar mes —</option>
                 <option value="1">Enero</option>
                 <option value="2">Febrero</option>
@@ -259,25 +275,15 @@
               </select>
             </div>
 
-            <!-- MES FIN (automático) -->
-            <div class="field" id="grpMesFin">
-              <label>
-                <i class="bi bi-calendar-check"></i> Mes Fin Servicio
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automático)</span>
-              </label>
-              <div class="fecha-auto-wrap">
-                <input type="text" id="mesFinServicio" readonly placeholder="— Se calcula automáticamente —">
-                <i class="bi bi-lock-fill fecha-auto-icon"></i>
-              </div>
-              <span class="field-locked-hint">
-                <i class="bi bi-info-circle"></i>
-                Mes Inicio + Tiempo meses → último mes del contrato
-              </span>
+            <!-- MES FIN: derivado de Mes Inicio + Tiempo. Oculto, sigue calculándose. -->
+            <div class="field campo-oculto" id="grpMesFin">
+              <label><i class="bi bi-calendar-check"></i> Mes Fin Servicio</label>
+              <input type="text" id="mesFinServicio" readonly autocomplete="off">
             </div>
 
             <div class="field" id="grpFechaInicio">
               <label><i class="bi bi-calendar-event"></i> Fecha Inicio Servicio</label>
-              <input type="date" id="fechaInicioServicio">
+              <input type="date" id="fechaInicioServicio" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="field" id="grpFechaFin">
               <label>
@@ -285,7 +291,7 @@
                 <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automática)</span>
               </label>
               <div class="fecha-auto-wrap">
-                <input type="date" id="fechaFinServicio" readonly>
+                <input type="date" id="fechaFinServicio" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 <i class="bi bi-lock-fill fecha-auto-icon"></i>
               </div>
               <span class="field-locked-hint">
@@ -293,14 +299,23 @@
                 Se calcula: Fecha Inicio + Tiempo (meses) − 1 día
               </span>
             </div>
+          </div>
+          </div>
+
+          <!-- ── Sección: condiciones ── -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo"><i class="bi bi-bank"></i> Condiciones</h4>
+          <div class="form-grid three">
             <div class="field" id="grpLicitacion">
               <label><i class="bi bi-bank"></i> ¿Es Licitación?</label>
-              <select id="esLicitacion">
+              <select id="esLicitacion" autocomplete="off">
                 <option value="false">No</option>
                 <option value="true">Sí</option>
               </select>
             </div>
           </div>
+          </div>
+
         </div>
       </div>
 
@@ -314,16 +329,16 @@
           <div class="form-grid">
             <div class="field">
               <label><i class="bi bi-search"></i> Ciudad / Municipio <span class="req">✦</span></label>
-              <input type="text" id="buscarMunicipio" placeholder="Escribe para filtrar..." oninput="filtrarMunicipios()">
+              <input type="text" id="buscarMunicipio" placeholder="Escribe para filtrar..." oninput="filtrarMunicipios()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="field">
               <label>&nbsp;</label>
-              <select id="idMunicipio" size="1"><option value="">— Busca primero arriba —</option></select>
+              <select id="idMunicipio" size="1" autocomplete="off"><option value="">— Busca primero arriba —</option></select>
             </div>
-            <div class="field">
-              <label><i class="bi bi-person-badge"></i> Consultor Responsable <span class="req">✦</span></label>
-              <select id="idConsultor"><option value="">— Cargando... —</option></select>
-              <span class="consultor-locked-hint"><i class="bi bi-lock-fill"></i> Asignado automáticamente al consultor en sesión</span>
+            <!-- Consultor: se asigna solo con la sesión. Oculto, sigue enviándose. -->
+            <div class="field campo-oculto">
+              <label><i class="bi bi-person-badge"></i> Consultor Responsable</label>
+              <select id="idConsultor" autocomplete="off"><option value="">— Cargando... —</option></select>
             </div>
           </div>
         </div>
@@ -337,25 +352,20 @@
         </div>
         <div class="card-body">
           <div class="form-grid">
-            <div class="field">
-              <label>
-                <i class="bi bi-calendar3"></i> Fecha del Registro
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automática)</span>
-              </label>
-              <div class="fecha-auto-wrap">
-                <input type="date" id="fecha" readonly>
-                <i class="bi bi-lock-fill fecha-auto-icon"></i>
-              </div>
-              <span class="field-locked-hint"><i class="bi bi-info-circle"></i> Se registra con la fecha de hoy de forma automática</span>
+            <!-- Fecha del registro: siempre hoy. Oculta, sigue enviándose. -->
+            <div class="field campo-oculto">
+              <label><i class="bi bi-calendar3"></i> Fecha del Registro</label>
+              <input type="date" id="fecha" readonly autocomplete="off">
             </div>
+
             <div class="field" id="grpValorMensual">
               <label><i class="bi bi-cash-stack"></i> Valor Mensual (Tarifa) <span class="req">✦</span></label>
-              <input type="text" id="valorMensual" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)">
+              <input type="text" id="valorMensual" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 12,000,000</span>
             </div>
             <div class="field" id="grpCosto">
               <label><i class="bi bi-receipt"></i> Costo Mensual <span class="req">✦</span></label>
-              <input type="text" id="costo" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)">
+              <input type="text" id="costo" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
               <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 10,500,000</span>
             </div>
             <div class="col-full" id="grpAiuPreview">
@@ -367,7 +377,7 @@
             </div>
             <div class="field col-full">
               <label><i class="bi bi-chat-text"></i> Observación <span class="req">✦</span></label>
-              <textarea id="observacion" placeholder="Contexto de la gestión, cómo se originó el contacto, datos relevantes..." oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase"></textarea>
+              <textarea id="observacion" placeholder="Contexto de la gestión, cómo se originó el contacto, datos relevantes..." oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             </div>
           </div>
         </div>

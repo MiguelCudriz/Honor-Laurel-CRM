@@ -135,4 +135,73 @@
     verTodos:     rol === 'ADMIN' || rol === 'SUPERVISOR',
     puedeVer
   };
+
+  /* ══════════════════════════════════════════════════════════════
+     SUPRESIÓN DEL AUTOCOMPLETADO DEL NAVEGADOR
+     ──────────────────────────────────────────────────────────────
+     El desplegable "Información guardada" de Chrome reutiliza los
+     valores que el usuario escribió antes en un campo con el mismo
+     name/id. En un CRM eso es peligroso: invita a repetir un N° de
+     cotización o una razón social de otro registro.
+
+     Dos medidas combinadas, porque autocomplete="off" por sí solo
+     no siempre basta:
+       1. autocomplete="off" en cada campo.
+       2. Un atributo name aleatorio por carga. Chrome asocia los
+          valores guardados al name, así que si el name cambia en
+          cada visita no tiene con qué emparejarlos.
+
+     Los campos no se envían por <form>: el JS los lee por id, de
+     modo que cambiar el name no afecta ningún guardado.
+  ══════════════════════════════════════════════════════════════ */
+  function aplicarACampo(el) {
+    const tipo = (el.getAttribute('type') || '').toLowerCase();
+
+    el.setAttribute('autocomplete', tipo === 'password' ? 'new-password' : 'off');
+
+    if (el.tagName !== 'SELECT') {
+      el.setAttribute('autocorrect', 'off');
+      el.setAttribute('autocapitalize', 'off');
+      el.setAttribute('spellcheck', 'false');
+    }
+
+    // name irrepetible por carga (no se usa para guardar: el JS lee por id)
+    if (!el.dataset.crmName) {
+      el.dataset.crmName = '1';
+      el.setAttribute('name', 'f' + Math.random().toString(36).slice(2, 10));
+    }
+  }
+
+  function bloquearAutocompletado(raiz) {
+    (raiz || document).querySelectorAll('input, select, textarea').forEach(aplicarACampo);
+  }
+
+  // Se expone porque las páginas que inyectan campos por JS (grilla de
+  // detalle, tablas de metas) deben volver a aplicarlo sobre lo nuevo.
+  window.CRM_SESION.bloquearAutocompletado = bloquearAutocompletado;
+
+  function iniciarAntiAutofill() {
+    bloquearAutocompletado(document);
+
+    // Los formularios que aparecen después (paneles de detalle, tarjetas
+    // que se despliegan) se cubren observando el DOM.
+    // Solo se inspecciona el nodo agregado, nunca el documento completo:
+    // páginas como Indicadores redibujan tablas y gráficos con frecuencia.
+    const SELECTOR = 'input, select, textarea';
+    const obs = new MutationObserver(muts => {
+      for (const m of muts) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.matches && n.matches(SELECTOR)) aplicarACampo(n);
+          else if (n.querySelector && n.querySelector(SELECTOR)) bloquearAutocompletado(n);
+        }
+      }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', iniciarAntiAutofill);
+  else
+    iniciarAntiAutofill();
 })();

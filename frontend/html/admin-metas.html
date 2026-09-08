@@ -10,6 +10,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/frontend/img/favicons/favicon-16x16.png">
   <meta name="theme-color" content="#ffffff">
   <link rel="stylesheet" href="/frontend/estilos/estilosadmin.css">
+  <link rel="stylesheet" href="/frontend/estilos/comun.css">
   <link rel="stylesheet" href="/frontend/estilos/estilosMetas.css">
 </head>
 <body>
@@ -55,7 +56,7 @@
       <!-- Selector de año -->
       <div class="anio-selector-wrap">
         <label><i class="bi bi-calendar3 me-1"></i>Año</label>
-        <select id="selectAnio" onchange="cargarMeta()">
+        <select id="selectAnio" onchange="cargarMeta()" autocomplete="off">
           <option value="">— Seleccionar —</option>
         </select>
         <button class="btn-nuevo-anio" onclick="crearNuevoAnio()">
@@ -94,11 +95,11 @@
               <input type="text" id="metaTotalAnual" class="input-meta-total money-meta"
                      placeholder="Ej: 11,000,000,000"
                      inputmode="numeric"
-                     oninput="onMetaTotalInput(this)">
+                     oninput="onMetaTotalInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
             <div class="field-meta">
               <label><i class="bi bi-card-text"></i> Descripción / Nota</label>
-              <input type="text" id="metaDescripcion" placeholder="Ej: Presupuesto Comercial 2026 aprobado en junta">
+              <input type="text" id="metaDescripcion" placeholder="Ej: Presupuesto Comercial 2026 aprobado en junta" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             </div>
           </div>
         </div>

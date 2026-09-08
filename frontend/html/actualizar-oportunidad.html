@@ -10,6 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="/frontend/estilos/estilosactualizar.css">
+  <link rel="stylesheet" href="/frontend/estilos/comun.css">
 </head>
 <body>
 
@@ -67,16 +68,16 @@
             <input type="text" id="inputBusqueda"
                    class="grilla-search-input"
                    placeholder="Filtrar por cotización, cliente o NIT..."
-                   oninput="filtrarGrilla()">
+                   oninput="filtrarGrilla()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <button class="grilla-search-clear" id="btnLimpiarBusqueda" onclick="limpiarBusqueda()" style="display:none" title="Limpiar">
               <i class="bi bi-x-circle-fill"></i>
             </button>
           </div>
           <div class="grilla-filtros">
-            <select id="filtroFase" class="grilla-select" onchange="filtrarGrilla()">
+            <select id="filtroFase" class="grilla-select" onchange="filtrarGrilla()" autocomplete="off">
               <option value="">Todas las fases</option>
             </select>
-            <select id="filtroEstado" class="grilla-select" onchange="filtrarGrilla()">
+            <select id="filtroEstado" class="grilla-select" onchange="filtrarGrilla()" autocomplete="off">
               <option value="">Todos los estados</option>
               <option value="activa">Activas</option>
               <option value="ganada">Ganadas</option>
@@ -168,190 +169,213 @@
           <span style="margin-left:auto;background:rgba(255,255,255,0.15);color:#fff;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:0.08em;">ACTUALIZACIÓN</span>
         </div>
         <div class="card-body">
-          <div class="form-grid three">
 
-            <!-- Nueva Fase -->
-            <div class="field">
-              <label><i class="bi bi-funnel"></i> Nueva Fase de Venta <span class="req">✦</span></label>
-              <select id="upFaseVenta"><option value="">— Seleccionar —</option></select>
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>La fase determina si los valores pueden ser $0</span>
-            </div>
+          <!-- ══════════ SECCIÓN 1 · MOVIMIENTO ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-funnel"></i> Movimiento
+              <span class="seccion-nota">Qué avance vas a registrar hoy</span>
+            </h4>
+            <div class="form-grid three">
 
-            <!-- Consultor (bloqueado) -->
-            <div class="field">
-              <label><i class="bi bi-person-badge"></i> Consultor que Actualiza <span class="req">✦</span></label>
-              <select id="upConsultor"><option value="">— Cargando... —</option></select>
-              <span class="consultor-locked-hint"><i class="bi bi-lock-fill"></i> Asignado automáticamente al consultor en sesión</span>
-            </div>
-
-            <!-- Fecha del Movimiento: AUTOMÁTICA -->
-            <div class="field">
-              <label>
-                <i class="bi bi-calendar3"></i> Fecha del Movimiento
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automática)</span>
-              </label>
-              <div class="fecha-auto-wrap">
-                <input type="date" id="upFecha" readonly>
-                <i class="bi bi-lock-fill fecha-auto-icon"></i>
+              <div class="field">
+                <label><i class="bi bi-funnel"></i> Nueva Fase de Venta <span class="req">✦</span></label>
+                <select id="upFaseVenta" autocomplete="off"><option value="">— Seleccionar —</option></select>
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>La fase determina si los valores pueden ser $0</span>
               </div>
-              <span class="field-locked-hint"><i class="bi bi-info-circle"></i> Se registra con la fecha de hoy de forma automática</span>
-            </div>
 
-            <!-- Valor Mensual -->
-            <div class="field">
-              <label><i class="bi bi-cash-stack"></i> Valor Mensual <span class="req">✦</span></label>
-              <input type="text" id="upValorMensual" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 12,000,000</span>
-            </div>
+              <!-- Consultor: se asigna solo con la sesión. Oculto, pero sigue
+                   existiendo y enviándose exactamente igual que antes. -->
+              <div class="field campo-oculto">
+                <label><i class="bi bi-person-badge"></i> Consultor que Actualiza</label>
+                <select id="upConsultor" autocomplete="off"><option value="">— Cargando... —</option></select>
+              </div>
 
-            <!-- Costo Mensual -->
-            <div class="field">
-              <label><i class="bi bi-receipt"></i> Costo Mensual <span class="req">✦</span></label>
-              <input type="text" id="upCosto" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 10,500,000</span>
-            </div>
+              <!-- Fecha del movimiento: siempre hoy. Oculta por la misma razón. -->
+              <div class="field campo-oculto">
+                <label><i class="bi bi-calendar3"></i> Fecha del Movimiento</label>
+                <input type="date" id="upFecha" readonly autocomplete="off">
+              </div>
 
-            <!-- AIU Preview -->
-            <div class="field" style="justify-content:flex-end">
-              <div class="aiu-preview" style="padding:10px 16px;grid-template-columns:1fr 1fr;">
-                <div class="aiu-item">
-                  <div class="lbl">AIU Abs.</div>
-                  <div class="val" id="upAiuAbs" style="font-size:1rem">$0</div>
+            </div>
+          </div>
+
+          <!-- ══════════ SECCIÓN 2 · VALORES ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-currency-dollar"></i> Valores
+              <span class="seccion-nota">El AIU se calcula solo</span>
+            </h4>
+            <div class="form-grid three">
+
+              <div class="field">
+                <label><i class="bi bi-cash-stack"></i> Valor Mensual <span class="req">✦</span></label>
+                <input type="text" id="upValorMensual" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 12,000,000</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-receipt"></i> Costo Mensual <span class="req">✦</span></label>
+                <input type="text" id="upCosto" class="money-input" inputmode="numeric" placeholder="0" oninput="onMoneyInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Sin decimales · Ej: 10,500,000</span>
+              </div>
+
+              <div class="field" style="justify-content:flex-end">
+                <div class="aiu-preview" style="padding:10px 16px;grid-template-columns:1fr 1fr;">
+                  <div class="aiu-item">
+                    <div class="lbl">AIU Abs.</div>
+                    <div class="val" id="upAiuAbs" style="font-size:1rem">$0</div>
+                  </div>
+                  <div class="aiu-item">
+                    <div class="lbl">% AIU</div>
+                    <div class="val verde" id="upAiuPct" style="font-size:1rem">0.00%</div>
+                  </div>
                 </div>
-                <div class="aiu-item">
-                  <div class="lbl">% AIU</div>
-                  <div class="val verde" id="upAiuPct" style="font-size:1rem">0.00%</div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ══════════ SECCIÓN 3 · CONTRATO Y SERVICIO ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-file-earmark-text"></i> Contrato y servicio
+              <span class="seccion-nota">Deja vacío lo que no cambie</span>
+            </h4>
+            <div class="form-grid three">
+
+              <div class="field">
+                <label><i class="bi bi-upc-scan"></i> N° Cotización</label>
+                <input type="text" id="upNumeroCotizacion" placeholder="Ej: DENXXX-XXXX-XXXX" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · deja vacío para no modificar el número actual</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-calendar-range"></i> Tiempo (meses) <span class="req">✦</span></label>
+                <input type="number" id="upTiempoMeses" min="1" max="72" placeholder="Ej: 12"
+                       oninput="calcularMesFinActualizar();calcularFechaFinActualizar()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint" id="upHintTiempoMeses"><i class="bi bi-info-circle me-1"></i>Obligatorio · actualiza la duración del contrato</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-layers"></i> Modalidad</label>
+                <select id="upIdModalidad" autocomplete="off">
+                  <option value="">— Sin cambio —</option>
+                </select>
+                <span class="hint" id="upHintModalidad"><i class="bi bi-info-circle me-1"></i>Opcional · complétala si la oportunidad se creó sin modalidad (fase de Contacto)</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-shield-check"></i> Servicio</label>
+                <select id="upIdServicio" autocomplete="off">
+                  <option value="">— Sin cambio —</option>
+                </select>
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · selecciona para cambiar el tipo de servicio</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-hash"></i> NIT del Cliente</label>
+                <input type="text" id="upNit" inputmode="numeric" maxlength="13"
+                       placeholder="Solo si desea actualizar el NIT"
+                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · actualiza el NIT del cliente si ha cambiado</span>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ══════════ SECCIÓN 4 · VIGENCIA DEL SERVICIO ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-calendar-week"></i> Vigencia del servicio
+              <span class="seccion-nota">La fecha de fin se calcula sola</span>
+            </h4>
+            <div class="form-grid three">
+
+              <div class="field">
+                <label><i class="bi bi-calendar-month"></i> Mes Inicio Servicio <span class="req">✦</span></label>
+                <select id="upMesInicioServicio" onchange="calcularMesFinActualizar()" autocomplete="off">
+                  <option value="">— Seleccionar mes —</option>
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6">Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-calendar-event"></i> Fecha Inicio Servicio <span class="req">✦</span></label>
+                <input type="date" id="upFechaInicioServicio" onchange="calcularFechaFinActualizar()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              </div>
+
+              <div class="field">
+                <label>
+                  <i class="bi bi-calendar-x"></i> Fecha Fin Servicio
+                  <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automática)</span>
+                </label>
+                <div class="fecha-auto-wrap">
+                  <input type="date" id="upFechaFinServicio" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                  <i class="bi bi-lock-fill fecha-auto-icon"></i>
                 </div>
+                <span class="field-locked-hint"><i class="bi bi-info-circle"></i> Fecha Inicio + Tiempo meses − 1 día</span>
+              </div>
+
+              <!-- Mes Fin: se deriva de Mes Inicio + Tiempo. Oculto, sigue calculándose. -->
+              <div class="field campo-oculto">
+                <label><i class="bi bi-calendar-check"></i> Mes Fin Servicio</label>
+                <input type="text" id="upMesFinServicio" readonly autocomplete="off">
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ══════════ SECCIÓN 5 · UBICACIÓN ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-geo-alt"></i> Ubicación del servicio
+              <span class="seccion-nota">Solo si el lugar cambió</span>
+            </h4>
+            <div class="form-grid">
+
+              <div class="field">
+                <label><i class="bi bi-search"></i> Buscar Ciudad / Municipio</label>
+                <input type="text" id="upBuscarMunicipio"
+                       placeholder="Escribe para filtrar..."
+                       oninput="filtrarMunicipiosUp()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · busca y selecciona si el lugar de servicio cambió</span>
+              </div>
+
+              <div class="field">
+                <label><i class="bi bi-geo-alt"></i> Ciudad / Municipio</label>
+                <select id="upIdMunicipio" size="1" autocomplete="off">
+                  <option value="">— Busca primero arriba —</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ══════════ SECCIÓN 6 · OBSERVACIÓN ══════════ -->
+          <div class="form-seccion">
+            <h4 class="seccion-titulo">
+              <i class="bi bi-chat-text"></i> Observación del movimiento
+            </h4>
+            <div class="form-grid one">
+              <div class="field">
+                <label><i class="bi bi-chat-text"></i> Observación <span class="req">✦</span></label>
+                <textarea id="upObservacion"
+                          placeholder="DESCRIBIR EL AVANCE, CONVERSACIÓN CON EL CLIENTE, CAMBIOS EN LA PROPUESTA..."
+                          oninput="this.value=this.value.toUpperCase()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
               </div>
             </div>
-
-
-            <!-- ═══════════════════════════════════════════════════════════════ -->
-            <!-- DATOS MAESTROS OPCIONALES (se actualizan junto con el movimiento) -->
-
-            <!-- N° Cotización (dentro del form para no pasarlo por alto) -->
-            <div class="field">
-              <label><i class="bi bi-upc-scan"></i> N° Cotización</label>
-              <input type="text" id="upNumeroCotizacion"
-                     placeholder="Ej: DENXXX-XXXX-XXXX"
-                     style="text-transform:uppercase">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · deja vacío para no modificar el número actual</span>
-            </div>
-
-            <!-- Tiempo Meses -->
-            <div class="field">
-              <label><i class="bi bi-calendar-range"></i> Tiempo (meses) <span class="req">✦</span></label>
-              <input type="number" id="upTiempoMeses" min="1" max="72" placeholder="Ej: 12"
-                     oninput="calcularMesFinActualizar();calcularFechaFinActualizar()">
-              <span class="hint" id="upHintTiempoMeses"><i class="bi bi-info-circle me-1"></i>Obligatorio · actualiza la duración del contrato</span>
-            </div>
-
-            <!-- NIT del cliente -->
-            <div class="field">
-              <label><i class="bi bi-hash"></i> NIT del Cliente</label>
-              <input type="text" id="upNit" inputmode="numeric" maxlength="13"
-                     placeholder="Solo si desea actualizar el NIT"
-                     oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · actualiza el NIT del cliente si ha cambiado</span>
-            </div>
-
-            <!-- Servicio -->
-            <div class="field">
-              <label><i class="bi bi-shield-check"></i> Servicio</label>
-              <select id="upIdServicio">
-                <option value="">— Sin cambio —</option>
-              </select>
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · selecciona para cambiar el tipo de servicio</span>
-            </div>
-
-            <!-- Modalidad -->
-            <div class="field">
-              <label><i class="bi bi-layers"></i> Modalidad</label>
-              <select id="upIdModalidad">
-                <option value="">— Sin cambio —</option>
-              </select>
-              <span class="hint" id="upHintModalidad"><i class="bi bi-info-circle me-1"></i>Opcional · complétala si la oportunidad se creó sin modalidad (fase de Contacto)</span>
-            </div>
-
-            <!-- Buscar Municipio -->
-            <div class="field">
-              <label><i class="bi bi-search"></i> Buscar Ciudad / Municipio</label>
-              <input type="text" id="upBuscarMunicipio"
-                     placeholder="Escribe para filtrar..."
-                     oninput="filtrarMunicipiosUp()">
-              <span class="hint"><i class="bi bi-info-circle me-1"></i>Opcional · busca y selecciona si el lugar de servicio cambió</span>
-            </div>
-
-            <!-- Municipio select -->
-            <div class="field">
-              <label><i class="bi bi-geo-alt"></i> Ciudad / Municipio</label>
-              <select id="upIdMunicipio" size="1">
-                <option value="">— Busca primero arriba —</option>
-              </select>
-            </div>
-
-            <!-- ═══════════════════════════════════════════════════════════════ -->
-            <!-- TIEMPO Y FECHAS (obligatorios para correcta inserción en BD)    -->
-            <!-- Mes Inicio Servicio -->
-            <div class="field">
-              <label><i class="bi bi-calendar-month"></i> Mes Inicio Servicio <span class="req">✦</span></label>
-              <select id="upMesInicioServicio" onchange="calcularMesFinActualizar()">
-                <option value="">— Seleccionar mes —</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
-            </div>
-
-            <!-- Mes Fin Servicio (automático) -->
-            <div class="field">
-              <label>
-                <i class="bi bi-calendar-check"></i> Mes Fin Servicio
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automático)</span>
-              </label>
-              <div class="fecha-auto-wrap">
-                <input type="text" id="upMesFinServicio" readonly placeholder="— Se calcula automáticamente —">
-                <i class="bi bi-lock-fill fecha-auto-icon"></i>
-              </div>
-              <span class="field-locked-hint"><i class="bi bi-info-circle"></i> Mes Inicio + Tiempo meses → último mes del contrato</span>
-            </div>
-
-            <!-- Fecha Inicio Servicio -->
-            <div class="field">
-              <label><i class="bi bi-calendar-event"></i> Fecha Inicio Servicio <span class="req">✦</span></label>
-              <input type="date" id="upFechaInicioServicio" onchange="calcularFechaFinActualizar()">
-            </div>
-
-            <!-- Fecha Fin Servicio (automática) -->
-            <div class="field">
-              <label>
-                <i class="bi bi-calendar-x"></i> Fecha Fin Servicio
-                <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.7rem;color:#8896B0">(automática)</span>
-              </label>
-              <div class="fecha-auto-wrap">
-                <input type="date" id="upFechaFinServicio" readonly>
-                <i class="bi bi-lock-fill fecha-auto-icon"></i>
-              </div>
-              <span class="field-locked-hint"><i class="bi bi-info-circle"></i> Fecha Inicio + Tiempo meses − 1 día</span>
-            </div>
-
-            <!-- Observación -->
-            <div class="field col-full">
-              <label><i class="bi bi-chat-text"></i> Observación del Movimiento <span class="req">✦</span></label>
-              <textarea id="upObservacion"
-                        placeholder="DESCRIBIR EL AVANCE, CONVERSACIÓN CON EL CLIENTE, CAMBIOS EN LA PROPUESTA..."
-                        oninput="this.value=this.value.toUpperCase()"></textarea>
-            </div>
-
           </div>
 
           <div class="form-actions">
