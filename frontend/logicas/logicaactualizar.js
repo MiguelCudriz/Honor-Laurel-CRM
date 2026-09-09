@@ -265,6 +265,12 @@ function inicializarMarcas() {
   });
 }
 
+// [v10] Deja solo dígitos y recorta al máximo permitido. Se aplica en cada
+// tecla y en cada pegado: el atributo maxlength por sí solo no impide pegar.
+function soloDigitos(el, max) {
+  el.value = (el.value || '').replace(/\D/g, '').slice(0, max);
+}
+
 // ── LLENAR SELECT ─────────────────────────────────────────────────
 function llenarSelect(id, items, valKey, txtKey) {
   const sel = document.getElementById(id);
@@ -430,10 +436,19 @@ async function cargarGrilla() {
   }
 
   try {
-    const res = await fetch(`${API}/oportunidades`).then(r => r.json());
+    // [v10] RENDIMIENTO Y PRIVACIDAD — El filtro por consultor se hace ahora en
+    // el servidor. Antes el navegador descargaba TODAS las oportunidades de la
+    // empresa y descartaba las ajenas en JavaScript: transferencia inútil y,
+    // de paso, datos de otros consultores viajando al equipo de cada usuario.
+    const url = verTodos
+      ? `${API}/oportunidades`
+      : `${API}/oportunidades?consultor=${encodeURIComponent(usuario)}`;
+
+    const res = await fetch(url).then(r => r.json());
     let opps  = res.data || [];
 
-    // Filtrar por consultor si no es admin/supervisor
+    // Red de seguridad: si el nombre de sesión no coincidiera exactamente con
+    // ConsultorActual, se vuelve a filtrar aquí para no mostrar de más.
     if (!verTodos) {
       opps = opps.filter(o => {
         const consultor = normalizarTexto(
@@ -819,6 +834,91 @@ function mostrarDetalle(data) {
   setTimeout(() => document.getElementById('detalleOportunidad').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   [v10] CHECKLIST DE CONFIRMACIÓN
+   ──────────────────────────────────────────────────────────────────
+   Lista los cambios reales antes de ejecutar el movimiento. Reutiliza
+   dataset.valorOriginal (lo guarda inicializarMarcas), así que no hay
+   una segunda fuente de verdad sobre "qué cambió".
+══════════════════════════════════════════════════════════════════ */
+
+// Etiqueta legible de cada campo del formulario.
+const ETIQUETAS_CAMPO = {
+  upNumeroCotizacion:    'N° Cotización',
+  upTiempoMeses:         'Tiempo (meses)',
+  upIdModalidad:         'Modalidad',
+  upIdServicio:          'Servicio',
+  upNit:                 'NIT del cliente',
+  upMesInicioServicio:   'Mes inicio servicio',
+  upFechaInicioServicio: 'Fecha inicio servicio',
+  upIdMunicipio:         'Ciudad / Municipio',
+  upValorMensual:        'Valor mensual',
+  upCosto:               'Costo mensual'
+};
+
+// Texto mostrable de un campo (para los <select> usa la etiqueta, no el id).
+function textoCampo(el, valor) {
+  if (!valor) return '<em>vacío</em>';
+  if (el.tagName === 'SELECT') {
+    const opt = Array.from(el.options).find(o => o.value === valor);
+    return opt ? opt.textContent.trim() : valor;
+  }
+  return valor;
+}
+
+async function confirmarCambios(nuevaFaseText) {
+  const cambios = [];
+
+  Object.keys(ETIQUETAS_CAMPO).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const antes  = el.dataset.valorOriginal ?? '';
+    const ahora  = el.value || '';
+    if (antes === ahora) return;
+    cambios.push(`<li><strong>${ETIQUETAS_CAMPO[id]}:</strong>
+      <span style="color:#8896B0">${textoCampo(el, antes)}</span>
+      <i class="bi bi-arrow-right mx-1"></i>
+      <span style="color:#2A8C38;font-weight:700">${textoCampo(el, ahora)}</span></li>`);
+  });
+
+  const faseAnterior = catalogoFases.find(f => f.id === idFaseActiva)?.descripcion || '—';
+  const cambiaFase   = normalizarTexto(faseAnterior) !== normalizarTexto(nuevaFaseText);
+
+  const bloqueFase = cambiaFase
+    ? `<li><strong>Fase:</strong>
+         <span style="color:#8896B0">${faseAnterior}</span>
+         <i class="bi bi-arrow-right mx-1"></i>
+         <span style="color:#2A8C38;font-weight:700">${nuevaFaseText}</span></li>`
+    : `<li><strong>Fase:</strong> se mantiene en <strong>${nuevaFaseText}</strong></li>`;
+
+  const listaDatos = cambios.length
+    ? `<ul class="check-cambios">${cambios.join('')}</ul>`
+    : `<p class="check-sin-cambios"><i class="bi bi-info-circle me-1"></i>
+         No modificaste ningún dato de la oportunidad: solo se registrará el movimiento.</p>`;
+
+  const res = await Swal.fire({
+    icon: null,
+    title: 'Revisa antes de actualizar',
+    html: `
+      <div class="check-wrap">
+        <p class="check-sub">Se registrará este movimiento con los siguientes cambios:</p>
+        <ul class="check-cambios">${bloqueFase}</ul>
+        <p class="check-sub">Datos de la oportunidad</p>
+        ${listaDatos}
+      </div>`,
+    width: 620,
+    showCancelButton: true,
+    confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Actualizar',
+    cancelButtonText: 'Volver a revisar',
+    confirmButtonColor: '#003087',
+    cancelButtonColor: '#8896B0',
+    reverseButtons: true,
+    focusCancel: true
+  });
+
+  return res.isConfirmed;
+}
+
 // ── CÁLCULO AIU ───────────────────────────────────────────────────
 function calcularAIU2() {
   const vm  = parseMoney(document.getElementById('upValorMensual').value);
@@ -943,6 +1043,16 @@ async function actualizarFase() {
     document.getElementById('upFechaInicioServicio').classList.remove('error');
   }
 
+  // [v10] NIT: solo dígitos, máximo 9 (misma regla que en Nueva Oportunidad).
+  const elNitUp  = document.getElementById('upNit');
+  const nitUpVal = elNitUp.value.trim();
+  if (nitUpVal && !/^\d{1,9}$/.test(nitUpVal)) {
+    elNitUp.classList.add('error');
+    toast('El NIT debe tener solo números, máximo 9 dígitos.', 'err');
+    return;
+  }
+  elNitUp.classList.remove('error');
+
   const vm = parseMoney(document.getElementById('upValorMensual').value);
   const c  = parseMoney(document.getElementById('upCosto').value);
 
@@ -961,6 +1071,13 @@ async function actualizarFase() {
     document.getElementById('upCosto').classList.add('error'); return;
   }
   document.getElementById('upCosto').classList.remove('error');
+
+  // [v10] RESUMEN DE CAMBIOS ANTES DE GUARDAR
+  // Se arma con las mismas marcas que ya pinta inicializarMarcas(): un campo
+  // cuenta como cambio cuando su valor difiere del que traía la oportunidad.
+  // Así el usuario confirma sobre hechos, no sobre lo que cree que tocó.
+  const confirmado = await confirmarCambios(nuevaFaseText);
+  if (!confirmado) return;
 
   const btn = document.getElementById('btnActualizar');
   btn.disabled = true;
@@ -1111,8 +1228,12 @@ async function guardarNumeroCotizacion() {
 
 // ── INIT ──────────────────────────────────────────────────────────
 (async () => {
-  await cargarCatalogos();
-  await cargarGrilla();
+  // [v10] RENDIMIENTO — Antes: await cargarCatalogos(); await cargarGrilla();
+  // La grilla esperaba a que terminaran los cinco catálogos (incluido el de
+  // municipios, que son más de mil filas) para recién pedir sus datos. Son
+  // llamadas independientes: van en paralelo y el tiempo total pasa a ser el
+  // de la más lenta, no la suma de todas.
+  await Promise.all([cargarCatalogos(), cargarGrilla()]);
 
   // Si viene desde nueva-oportunidad con cotización activa, abrir directo
   const cotActiva = sessionStorage.getItem('crm_cotizacion_activa');

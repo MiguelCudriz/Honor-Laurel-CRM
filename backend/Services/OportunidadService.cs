@@ -322,8 +322,29 @@ public class OportunidadService
         string? tipoCierre = null)
     {
         using var conn = _db.CreateConnection();
+
+        // [v10] RENDIMIENTO — Antes era SELECT *, que arrastraba Observacion
+        // (NVARCHAR(MAX)) de TODAS las oportunidades en cada carga de la
+        // grilla, aunque la grilla no muestra la observación. En una base con
+        // historial eso multiplica el peso de la respuesta por varios órdenes
+        // de magnitud. Aquí se piden solo las columnas que la grilla y sus
+        // filtros usan; el detalle sigue trayendo todo al abrir una fila.
         return await conn.QueryAsync<OportunidadVigenteDto>(@"
-            SELECT *
+            SELECT IdOportunidad, NumeroCotizacion, ProspectoCliente, NIT,
+                   IdTipoCliente, TipoCliente, EsLicitacion, Licitacion,
+                   IdSectorEconomico, SectorEconomico,
+                   IdConsultorActual, ConsultorActual,
+                   Region, Departamento, IdMunicipio, Ciudad,
+                   IdServicio, Servicio, IdModalidad, ModalidadContrato,
+                   IdFaseVenta, FaseVenta, OrdenFunnel, RequiereDatosComerciales,
+                   ProbabilidadVenta, EsCierre, TipoCierre,
+                   ValorMensual, Costo, AIUAbsoluto, PorcentajeAIU,
+                   MontoTotalDuracion, ValorPonderado,
+                   TiempoMeses, IdMesInicio, MesInicio, IdMesFin, MesFin,
+                   DatosCompletos,
+                   FechaPrimerRegistro, FechaActualizacion,
+                   FechaInicioServicio, FechaFinServicio,
+                   MesRegistro, AnioRegistro
             FROM   CRM.VW_OportunidadesActuales
             WHERE  (@Consultor  IS NULL OR ConsultorActual = @Consultor)
               AND  (@Fase       IS NULL OR FaseVenta       = @Fase)

@@ -288,10 +288,10 @@
 
               <div class="field">
                 <label><i class="bi bi-hash"></i> NIT del Cliente</label>
-                <input type="text" id="upNit" inputmode="numeric" maxlength="13"
+                <input type="text" id="upNit" inputmode="numeric" maxlength="9"
                        placeholder="Solo si desea actualizar el NIT"
-                       oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                <span class="hint"><i class="bi bi-info-circle me-1"></i>Actualiza el NIT del cliente si ha cambiado</span>
+                       oninput="soloDigitos(this, 9)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span class="hint"><i class="bi bi-info-circle me-1"></i>Solo dígitos · 9 como máximo</span>
               </div>
 
             </div>

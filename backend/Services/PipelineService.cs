@@ -583,28 +583,40 @@ public class PipelineService
     /// y de esas cuántas son VENTA (TipoCierre=GANADA / EsCierre=1).
     /// Efectividad% = (Ventas / TotalMayor40) * 100
     /// </summary>
+    /// <summary>
+    /// [v10] EFECTIVIDAD DE OFERTAS
+    ///
+    /// Base de cálculo = oportunidades con probabilidad &gt;= 40%  +  las perdidas
+    ///                   (NO ADJUDICADO / NO PRESENTADO).
+    /// Numerador       = las que se ganaron.
+    ///
+    /// Las perdidas se suman aparte porque su fase tiene probabilidad baja y
+    /// quedaban fuera del filtro &gt;= 40%: sin ellas el denominador ignoraba las
+    /// ofertas que efectivamente se compitieron y se perdieron, e inflaba el
+    /// porcentaje. Ejemplo del negocio: 5 ganadas + 4 abiertas al 80% + 1
+    /// perdida → base 10, efectividad 50%.
+    /// </summary>
     public async Task<IEnumerable<EfectividadMesDto>> GetEfectividadOfertasAsync(int anio, string? consultor)
     {
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync<EfectividadMesDto>(@"
             SELECT
-                df.MesNumero                                                  AS Mes,
-                df.NombreMes                                                  AS NombreMes,
-                COUNT(*)                                                      AS TotalMayor40,
-                SUM(CASE WHEN oa.EsCierre = 1
-                          AND oa.TipoCierre = 'GANADA' THEN 1 ELSE 0 END)   AS TotalVenta,
+                df.MesNumero                                                   AS Mes,
+                df.NombreMes                                                   AS NombreMes,
+                COUNT(*)                                                       AS TotalBase,
+                SUM(CASE WHEN oa.TipoCierre = 'GANADA'  THEN 1 ELSE 0 END)     AS TotalVenta,
+                SUM(CASE WHEN oa.TipoCierre = 'PERDIDA' THEN 1 ELSE 0 END)     AS TotalPerdida,
                 CAST(
                     ROUND(
-                        CAST(SUM(CASE WHEN oa.EsCierre = 1
-                                      AND oa.TipoCierre = 'GANADA'
+                        CAST(SUM(CASE WHEN oa.TipoCierre = 'GANADA'
                                       THEN 1 ELSE 0 END) AS FLOAT)
                         / NULLIF(COUNT(*), 0) * 100
                     , 1)
-                AS DECIMAL(5,1))                                              AS EfectividadPct
+                AS DECIMAL(5,1))                                               AS EfectividadPct
             FROM       CRM.VW_OportunidadesActuales oa
             INNER JOIN CRM.DimFecha df ON df.Fecha = oa.FechaActualizacion
             WHERE  df.Anio = @Anio
-              AND  oa.PorcentajeProbabilidad >= 40
+              AND  (oa.PorcentajeProbabilidad >= 40 OR oa.TipoCierre = 'PERDIDA')
               AND  (@Consultor IS NULL OR oa.ConsultorActual = @Consultor)
             GROUP BY df.MesNumero, df.NombreMes
             ORDER BY df.MesNumero",

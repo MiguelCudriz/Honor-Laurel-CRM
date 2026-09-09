@@ -573,3 +573,80 @@ body {
   .card-login { padding: 40px 28px; }
   .modal-card { margin: 16px; padding: 36px 24px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   MARCA — HONOR AVANZA
+   Dos pesos tipográficos, una flecha que refuerza la idea de
+   avance y un subrayado en el verde corporativo. Sin animaciones
+   llamativas: es una pantalla de acceso, no una landing.
+══════════════════════════════════════════════════════════════ */
+
+.panel-brand h1.brand-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.brand-title .brand-linea {
+  display: block;
+  line-height: 1;
+}
+
+/* "HONOR": más ligero y espaciado, actúa como antetítulo */
+.brand-title .brand-linea:first-child {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;            /* compensa el tracking del último carácter */
+  color: rgba(255,255,255,0.78);
+}
+
+/* "AVANZA": el peso de la marca */
+.brand-title .brand-avanza {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 3.2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  padding-bottom: 10px;
+}
+
+/* Subrayado corporativo bajo AVANZA */
+.brand-title .brand-avanza::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--verde, #39B54A), rgba(57,181,74,0.15));
+  box-shadow: 0 0 14px rgba(57,181,74,0.45);
+}
+
+.brand-title .brand-flecha {
+  font-size: 2.6rem;
+  margin-left: -2px;
+  color: var(--verde, #39B54A);
+  filter: drop-shadow(0 0 10px rgba(57,181,74,0.5));
+  transform: translateY(1px);
+}
+
+.panel-brand .brand-tagline {
+  margin: 0;
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .brand-title .brand-avanza { font-size: 2.4rem; }
+  .brand-title .brand-flecha { font-size: 2rem; }
+  .brand-title .brand-linea:first-child { font-size: 1.2rem; }
+}

@@ -274,3 +274,42 @@ img, svg, canvas { max-width: 100%; }
 .campo-marca.marca-original { color: #8896B0; }
 .campo-marca.marca-vacio    { color: #C0A24A; }
 .campo-marca.marca-cambiado { color: var(--verde-dark, #2A8C38); }
+
+/* ══════════════════════════════════════════════════════════════
+   9. CHECKLIST DE CONFIRMACIÓN
+   Resumen de cambios que se muestra antes de guardar un
+   movimiento de actualización.
+══════════════════════════════════════════════════════════════ */
+
+.check-wrap { text-align: left; }
+
+.check-sub {
+  margin: 14px 0 6px;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.09em;
+  text-transform: uppercase; color: #8896B0;
+}
+.check-wrap .check-sub:first-child { margin-top: 0; }
+
+.check-cambios {
+  list-style: none;
+  margin: 0; padding: 0;
+  border: 1px solid var(--gris-borde, #D0D9E8);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.check-cambios li {
+  padding: 9px 14px;
+  font-size: 0.86rem;
+  border-bottom: 1px solid var(--gris-borde, #D0D9E8);
+  background: #FAFBFE;
+}
+.check-cambios li:last-child { border-bottom: none; }
+.check-cambios li strong { color: var(--azul, #003087); }
+
+.check-sin-cambios {
+  margin: 0; padding: 12px 14px;
+  font-size: 0.86rem; color: #6B7A9A;
+  background: #FAFBFE;
+  border: 1px dashed var(--gris-borde, #D0D9E8);
+  border-radius: 10px;
+}

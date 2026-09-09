@@ -1104,20 +1104,25 @@ function renderEfectividad(data) {
   const mapa = {};
   data.forEach(d => { mapa[d.mes ?? d.Mes] = d; });
 
-  const ofertas = [], ventas = [], pcts = [];
+  // [v10] La base ya no son solo las ofertas con prob >= 40%: incluye las
+  // perdidas (NO ADJUDICADO / NO PRESENTADO). Se muestran en su propia fila
+  // para que el denominador quede a la vista y el % sea auditable.
+  const base = [], ventas = [], perdidas = [], pcts = [];
   for (let m = 1; m <= 12; m++) {
     const r = mapa[m];
-    ofertas.push(r ? (r.totalMayor40 ?? r.TotalMayor40 ?? 0) : 0);
-    ventas .push(r ? (r.totalVenta   ?? r.TotalVenta   ?? 0) : 0);
-    pcts   .push(r ? parseFloat(r.efectividadPct ?? r.EfectividadPct ?? 0) : null);
+    base    .push(r ? (r.totalBase    ?? r.TotalBase    ?? 0) : 0);
+    ventas  .push(r ? (r.totalVenta   ?? r.TotalVenta   ?? 0) : 0);
+    perdidas.push(r ? (r.totalPerdida ?? r.TotalPerdida ?? 0) : 0);
+    pcts    .push(r ? parseFloat(r.efectividadPct ?? r.EfectividadPct ?? 0) : null);
   }
 
-  const totOfertas = ofertas.reduce((a, b) => a + b, 0);
-  const totVentas  = ventas .reduce((a, b) => a + b, 0);
+  const totBase     = base    .reduce((a, b) => a + b, 0);
+  const totVentas   = ventas  .reduce((a, b) => a + b, 0);
+  const totPerdidas = perdidas.reduce((a, b) => a + b, 0);
   // Acumulado real = ventas del año / ofertas del año.
   // No es el promedio de los 12 porcentajes: eso le daría el mismo peso a un
   // mes con 1 oferta que a uno con 40.
-  const pctAcum = totOfertas > 0 ? (totVentas / totOfertas) * 100 : 0;
+  const pctAcum = totBase > 0 ? (totVentas / totBase) * 100 : 0;
 
   const filaConteo = (label, arr, total, clase) => `<tr>
     <td class="res-lbl ${clase}">${label}</td>
@@ -1126,12 +1131,13 @@ function renderEfectividad(data) {
   </tr>`;
 
   tbody.innerHTML =
-    filaConteo('OFERTAS<br>PROB. ≥ 40%', ofertas, totOfertas, 'ofertas-lbl') +
-    filaConteo('VENTAS<br>GANADAS',      ventas,  totVentas,  'ganadas-lbl') +
+    filaConteo('OFERTAS BASE<br>PROB. ≥ 40% + PERDIDAS', base,     totBase,     'ofertas-lbl') +
+    filaConteo('VENTAS<br>GANADAS',                      ventas,   totVentas,   'ganadas-lbl') +
+    filaConteo('PERDIDAS<br>NO ADJUD. / NO PRESENT.',    perdidas, totPerdidas, 'perdidas-lbl') +
     `<tr class="efect-row-pct">
       <td class="res-lbl cumpl-lbl">% EFECTIVIDAD</td>
       ${pcts.map((p, i) => {
-        if (p === null || ofertas[i] === 0) return '<td class="celda-vacia">—</td>';
+        if (p === null || base[i] === 0) return '<td class="celda-vacia">—</td>';
         return `<td style="color:${colorPct(p)};font-weight:800">${p.toFixed(1)}%</td>`;
       }).join('')}
       <td class="col-total" style="color:${colorPct(pctAcum)}">${pctAcum.toFixed(1)}%</td>

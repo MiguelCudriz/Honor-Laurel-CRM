@@ -227,7 +227,9 @@ public class EfectividadMesDto
 {
     public int     Mes           { get; set; }
     public string  NombreMes     { get; set; } = string.Empty;
-    public int     TotalMayor40  { get; set; }   // opors. con Prob >= 40%
+    /// <summary>[v10] Base del indicador: Prob &gt;= 40% MÁS las perdidas.</summary>
+    public int     TotalBase     { get; set; }
     public int     TotalVenta    { get; set; }   // de esas, cuántas son VENTA
-    public decimal EfectividadPct{ get; set; }   // TotalVenta/TotalMayor40 *100
+    public int     TotalPerdida  { get; set; }   // NO ADJUDICADO / NO PRESENTADO
+    public decimal EfectividadPct{ get; set; }   // TotalVenta / TotalBase * 100
 }
