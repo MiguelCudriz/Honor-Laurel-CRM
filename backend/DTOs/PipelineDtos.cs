@@ -230,6 +230,7 @@ public class EfectividadMesDto
     /// <summary>[v10] Base del indicador: Prob &gt;= 40% MÁS las perdidas.</summary>
     public int     TotalBase     { get; set; }
     public int     TotalVenta    { get; set; }   // de esas, cuántas son VENTA
+    public int     TotalActiva   { get; set; }   // abiertas con Prob >= 40%
     public int     TotalPerdida  { get; set; }   // NO ADJUDICADO / NO PRESENTADO
     public decimal EfectividadPct{ get; set; }   // TotalVenta / TotalBase * 100
 }

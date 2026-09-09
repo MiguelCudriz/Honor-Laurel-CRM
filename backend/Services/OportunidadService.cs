@@ -353,6 +353,58 @@ public class OportunidadService
             new { Consultor = consultor, Fase = fase, TipoCierre = tipoCierre });
     }
 
+    /// <summary>
+    /// [v8] Revierte el último movimiento de una oportunidad. No borra: marca
+    /// el movimiento como anulado, con lo cual el anterior vuelve a ser el
+    /// vigente y la oportunidad regresa sola a su fase previa.
+    /// La validación de rol se hace en el controlador.
+    /// </summary>
+    public async Task<AnularMovimientoResponse> AnularUltimoMovimientoAsync(
+        AnularMovimientoRequest req, string usuario)
+    {
+        using var conn = _db.CreateConnection();
+
+        var p = new DynamicParameters();
+        p.Add("@IdOportunidad", req.IdOportunidad);
+        p.Add("@Usuario",       usuario);
+        p.Add("@Motivo",        req.Motivo);
+        p.Add("@FaseResultante", dbType: DbType.String, size: 100,
+              direction: ParameterDirection.Output);
+
+        await conn.ExecuteAsync("CRM.SP_AnularUltimoMovimiento", p,
+            commandType: CommandType.StoredProcedure);
+
+        var fase = p.Get<string?>("@FaseResultante");
+
+        return new AnularMovimientoResponse
+        {
+            IdOportunidad  = req.IdOportunidad,
+            FaseResultante = fase,
+            Mensaje        = $"Movimiento revertido. La oportunidad volvió a la fase {fase}."
+        };
+    }
+
+    /// <summary>
+    /// [v8] Da de baja la oportunidad completa (Activo = 0) y anula todos sus
+    /// movimientos. Nada se borra: sale de la grilla y de los indicadores,
+    /// pero la traza queda para auditoría.
+    /// </summary>
+    public async Task<AnularMovimientoResponse> AnularOportunidadAsync(
+        AnularMovimientoRequest req, string usuario)
+    {
+        using var conn = _db.CreateConnection();
+
+        await conn.ExecuteAsync("CRM.SP_AnularOportunidad",
+            new { req.IdOportunidad, Usuario = usuario, req.Motivo },
+            commandType: CommandType.StoredProcedure);
+
+        return new AnularMovimientoResponse
+        {
+            IdOportunidad = req.IdOportunidad,
+            Mensaje       = "Oportunidad anulada. Ya no aparecerá en la grilla ni en los indicadores."
+        };
+    }
+
     /// <summary>Busca por NumeroCotizacion. Retorna null si no existe.</summary>
     public async Task<object?> GetDetalleOportunidadAsync(string numeroCotizacion)
     {

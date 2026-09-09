@@ -299,6 +299,86 @@ public class OportunidadController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    //  [v8] CORRECCIÓN DE CIERRES MAL REGISTRADOS
+    //
+    //  Reservado a ADMIN y SUPERVISOR. El rol viaja en la cabecera X-Rol, la
+    //  misma vía por la que ya se envía el usuario: no hay tokens en esta
+    //  aplicación, así que se valida igual que el resto de los endpoints.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// [v8] Usuario que ejecuta la acción. La aplicación no usa tokens, así que
+    /// el frontend lo envía en la cabecera X-Usuario; si no llega, se cae a la
+    /// identidad del request. Importa porque queda escrito en la auditoría.
+    /// </summary>
+    private string UsuarioActual
+    {
+        get
+        {
+            var h = Request.Headers["X-Usuario"].FirstOrDefault()?.Trim();
+            return string.IsNullOrWhiteSpace(h) ? (User.Identity?.Name ?? "SISTEMA") : h;
+        }
+    }
+
+    private bool PuedeCorregirCierres() =>
+        (Request.Headers["X-Rol"].FirstOrDefault() ?? "")
+            .Trim().ToUpperInvariant() is "ADMIN" or "SUPERVISOR";
+
+    /// <summary>Revierte el último movimiento: la oportunidad vuelve a su fase anterior.</summary>
+    [HttpPost("oportunidades/revertir-movimiento")]
+    public async Task<IActionResult> RevertirMovimiento([FromBody] AnularMovimientoRequest req)
+    {
+        if (!PuedeCorregirCierres())
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<object>.Fail("Solo un ADMIN o SUPERVISOR puede corregir un cierre."));
+
+        if (req.IdOportunidad <= 0)
+            return BadRequest(ApiResponse<object>.Fail("Oportunidad no válida."));
+
+        if (string.IsNullOrWhiteSpace(req.Motivo) || req.Motivo.Trim().Length < 10)
+            return BadRequest(ApiResponse<object>.Fail("Describe el motivo de la corrección (mínimo 10 caracteres)."));
+
+        try
+        {
+            var data = await _svc.AnularUltimoMovimientoAsync(req, UsuarioActual);
+            _logger.LogWarning("Movimiento revertido en oportunidad {Id} por {Usuario}. Motivo: {Motivo}",
+                req.IdOportunidad, UsuarioActual, req.Motivo);
+            return Ok(ApiResponse<AnularMovimientoResponse>.Ok(data, data.Mensaje));
+        }
+        catch (SqlException ex)
+        {
+            return MapearErrorSql(ex, "al revertir el movimiento");
+        }
+    }
+
+    /// <summary>Da de baja la oportunidad completa. No borra: la saca de circulación.</summary>
+    [HttpPost("oportunidades/anular")]
+    public async Task<IActionResult> AnularOportunidad([FromBody] AnularMovimientoRequest req)
+    {
+        if (!PuedeCorregirCierres())
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse<object>.Fail("Solo un ADMIN o SUPERVISOR puede anular una oportunidad."));
+
+        if (req.IdOportunidad <= 0)
+            return BadRequest(ApiResponse<object>.Fail("Oportunidad no válida."));
+
+        if (string.IsNullOrWhiteSpace(req.Motivo) || req.Motivo.Trim().Length < 10)
+            return BadRequest(ApiResponse<object>.Fail("Describe el motivo de la anulación (mínimo 10 caracteres)."));
+
+        try
+        {
+            var data = await _svc.AnularOportunidadAsync(req, UsuarioActual);
+            _logger.LogWarning("Oportunidad {Id} anulada por {Usuario}. Motivo: {Motivo}",
+                req.IdOportunidad, UsuarioActual, req.Motivo);
+            return Ok(ApiResponse<AnularMovimientoResponse>.Ok(data, data.Mensaje));
+        }
+        catch (SqlException ex)
+        {
+            return MapearErrorSql(ex, "al anular la oportunidad");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     //  [v5] MAPEO CENTRALIZADO DE ERRORES SQL
     //
     //  Una sola tabla en vez de repetir cadenas de catch en cada endpoint.
@@ -325,6 +405,10 @@ public class OportunidadController : ControllerBase
             [50020] = (StatusCodes.Status400BadRequest, "Debe informar el Id de la oportunidad o su N° de cotización."),
             [50030] = (StatusCodes.Status409Conflict, "El NIT ingresado ya pertenece a otro cliente registrado."),
             [50050] = (StatusCodes.Status409Conflict, "No se puede retroceder de fase. Solo se permite avanzar o corregir la fase vigente."),
+            [50060] = (StatusCodes.Status409Conflict, "La oportunidad no tiene movimientos vigentes que revertir."),
+            [50061] = (StatusCodes.Status409Conflict, ""),   // único movimiento (mensaje del SP)
+            [50062] = (StatusCodes.Status400BadRequest, "Debe indicar el motivo de la corrección (mínimo 10 caracteres)."),
+            [50063] = (StatusCodes.Status409Conflict, "La oportunidad ya está inactiva."),
             [2627]  = (StatusCodes.Status409Conflict, "El N° de cotización ya existe en otra oportunidad."),
             [2601]  = (StatusCodes.Status409Conflict, "El N° de cotización ya existe en otra oportunidad."),
         };

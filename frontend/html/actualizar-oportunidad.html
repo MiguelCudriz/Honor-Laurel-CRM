@@ -161,6 +161,35 @@
         </div>
       </div>
 
+      <!-- ══════════ CORRECCIÓN DE CIERRES — solo ADMIN / SUPERVISOR ══════════
+           Un consultor puede cerrar por error una oportunidad como VENTA,
+           NO ADJUDICADO o NO PRESENTADO. Al quedar cerrada, el formulario de
+           actualización desaparece y hasta ahora la única salida era tocar la
+           base de datos a mano. Este bloque trae esa corrección a la app, con
+           motivo obligatorio y traza de quién lo hizo. -->
+      <div class="card card-correccion" id="cardCorreccion" style="display:none">
+        <div class="card-header card-header-alerta">
+          <div class="header-icon" style="background-color:rgba(255,255,255,0.18)"><i class="bi bi-shield-exclamation"></i></div>
+          <h3>Corregir registro</h3>
+          <span class="acordeon-estado es-opcional">ADMIN / SUPERVISOR</span>
+        </div>
+        <div class="card-body">
+          <p class="correccion-texto" id="correccionTexto">
+            Si el último movimiento se registró por error, puedes revertirlo.
+            La oportunidad vuelve a la fase anterior y el movimiento queda en el
+            historial marcado como anulado, con tu nombre y el motivo.
+          </p>
+          <div class="form-actions" style="justify-content:flex-start">
+            <button class="btn btn-secondary" onclick="revertirUltimoMovimiento()">
+              <i class="bi bi-arrow-counterclockwise"></i> Revertir último movimiento
+            </button>
+            <button class="btn btn-peligro" onclick="anularOportunidad()">
+              <i class="bi bi-trash3"></i> Anular oportunidad completa
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ══════════ FORM ACTUALIZAR FASE — un bloque por tema ══════════ -->
       <div id="cardActualizar">
 

@@ -1107,17 +1107,19 @@ function renderEfectividad(data) {
   // [v10] La base ya no son solo las ofertas con prob >= 40%: incluye las
   // perdidas (NO ADJUDICADO / NO PRESENTADO). Se muestran en su propia fila
   // para que el denominador quede a la vista y el % sea auditable.
-  const base = [], ventas = [], perdidas = [], pcts = [];
+  const base = [], ventas = [], activas = [], perdidas = [], pcts = [];
   for (let m = 1; m <= 12; m++) {
     const r = mapa[m];
     base    .push(r ? (r.totalBase    ?? r.TotalBase    ?? 0) : 0);
     ventas  .push(r ? (r.totalVenta   ?? r.TotalVenta   ?? 0) : 0);
+    activas .push(r ? (r.totalActiva  ?? r.TotalActiva  ?? 0) : 0);
     perdidas.push(r ? (r.totalPerdida ?? r.TotalPerdida ?? 0) : 0);
     pcts    .push(r ? parseFloat(r.efectividadPct ?? r.EfectividadPct ?? 0) : null);
   }
 
   const totBase     = base    .reduce((a, b) => a + b, 0);
   const totVentas   = ventas  .reduce((a, b) => a + b, 0);
+  const totActivas  = activas .reduce((a, b) => a + b, 0);
   const totPerdidas = perdidas.reduce((a, b) => a + b, 0);
   // Acumulado real = ventas del año / ofertas del año.
   // No es el promedio de los 12 porcentajes: eso le daría el mismo peso a un
@@ -1133,6 +1135,7 @@ function renderEfectividad(data) {
   tbody.innerHTML =
     filaConteo('OFERTAS BASE<br>PROB. ≥ 40% + PERDIDAS', base,     totBase,     'ofertas-lbl') +
     filaConteo('VENTAS<br>GANADAS',                      ventas,   totVentas,   'ganadas-lbl') +
+    filaConteo('ACTIVAS<br>ABIERTAS ≥ 40%',              activas,  totActivas,  'activas-lbl') +
     filaConteo('PERDIDAS<br>NO ADJUD. / NO PRESENT.',    perdidas, totPerdidas, 'perdidas-lbl') +
     `<tr class="efect-row-pct">
       <td class="res-lbl cumpl-lbl">% EFECTIVIDAD</td>

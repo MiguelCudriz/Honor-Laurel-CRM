@@ -701,6 +701,11 @@ body {
   font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
   text-align: center; padding: 10px 12px; line-height: 1.25;
 }
+.res-lbl.activas-lbl {
+  background: #E9A020; color: #fff;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
+  text-align: center; padding: 10px 12px; line-height: 1.25;
+}
 .res-lbl.perdidas-lbl {
   background: #D93025; color: #fff;
   font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;

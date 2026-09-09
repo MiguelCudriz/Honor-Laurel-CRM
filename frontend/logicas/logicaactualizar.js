@@ -290,7 +290,10 @@ async function cargarCatalogos() {
       fetch(`${API}/catalogos/fases-venta`).then(r => r.json()),
       fetch(`${API}/catalogos/consultores`).then(r => r.json()),
       fetch(`${API}/catalogos/servicios`).then(r => r.json()),
-      fetch(`${API}/catalogos/municipios`).then(r => r.json()),
+      // [v11] Municipios NO va aquí: son más de mil filas que solo hacen falta
+      // al abrir una oportunidad. Cargarlas en el arranque competía con la
+      // consulta de la grilla y es una de las causas de la carga lenta.
+      Promise.resolve({ data: [] }),
       fetch(`${API}/catalogos/modalidades`).then(r => r.json()),
     ]);
     catalogoFases       = fases.data       || [];
@@ -407,7 +410,25 @@ function aplicarLimiteMesesUp(avisar = false) {
 }
 
 // ── FILTRO MUNICIPIO (formulario actualizar) ────────────────────────────
-function filtrarMunicipiosUp() {
+// [v11] Trae el catálogo de municipios la primera vez que hace falta.
+let cargandoMunicipios = null;
+async function asegurarMunicipios() {
+  if (todosLosMunicipios.length) return;
+  if (!cargandoMunicipios) {
+    cargandoMunicipios = fetchJson(`${API}/catalogos/municipios`)
+      .then(r => { todosLosMunicipios = r.data || []; })
+      .catch(() => { toast('No se pudo cargar el listado de municipios.', 'err'); })
+      .finally(() => { cargandoMunicipios = null; });
+  }
+  await cargandoMunicipios;
+}
+
+async function filtrarMunicipiosUp() {
+  await asegurarMunicipios();
+  filtrarMunicipiosUpSync();
+}
+
+function filtrarMunicipiosUpSync() {
   const q   = document.getElementById('upBuscarMunicipio').value.toLowerCase();
   const sel = document.getElementById('upIdMunicipio');
   sel.innerHTML = '<option value="">— Seleccionar —</option>';
@@ -444,7 +465,11 @@ async function cargarGrilla() {
       ? `${API}/oportunidades`
       : `${API}/oportunidades?consultor=${encodeURIComponent(usuario)}`;
 
-    const res = await fetch(url).then(r => r.json());
+    // [v11] Carga tolerante a fallos. Antes se hacía `res.data || []`: si la
+    // API devolvía un error o la petición se colgaba, la grilla se pintaba
+    // VACÍA sin avisar y parecía que no había oportunidades. Ahora un fallo
+    // se distingue de "no hay datos" y se puede reintentar.
+    const res = await fetchConReintento(url);
     let opps  = res.data || [];
 
     // Red de seguridad: si el nombre de sesión no coincidiera exactamente con
@@ -462,10 +487,77 @@ async function cargarGrilla() {
     renderGrilla(todasLasOportunidades);
 
   } catch (e) {
-    toast('Error cargando oportunidades.', 'err');
-    document.getElementById('grillaLoading').style.display = 'none';
-    document.getElementById('grillaWrap').style.display    = 'block';
+    mostrarErrorGrilla(e.message || 'No se pudo conectar con el servidor.');
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   [v11] CARGA TOLERANTE A FALLOS
+   ──────────────────────────────────────────────────────────────────
+   Tres problemas que producían la pantalla vacía intermitente:
+     · Una respuesta con success:false se leía como "cero resultados".
+     · Una petición colgada dejaba el "Cargando..." para siempre, sin
+       timeout que la cortara.
+     · Un fallo puntual de red no se reintentaba nunca.
+══════════════════════════════════════════════════════════════════ */
+
+const TIMEOUT_MS = 20000;
+
+async function fetchJson(url, opciones = {}) {
+  const ctrl  = new AbortController();
+  const reloj = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const r = await fetch(url, { ...opciones, signal: ctrl.signal });
+    if (!r.ok) throw new Error(`El servidor respondió ${r.status}.`);
+    const json = await r.json();
+    if (json && json.success === false)
+      throw new Error(json.message || 'El servidor rechazó la consulta.');
+    return json;
+  } catch (e) {
+    if (e.name === 'AbortError')
+      throw new Error('El servidor tardó demasiado en responder.');
+    throw e;
+  } finally {
+    clearTimeout(reloj);
+  }
+}
+
+// Un reintento con espera corta: cubre el fallo puntual sin castigar
+// al usuario con esperas largas cuando el servidor está realmente caído.
+async function fetchConReintento(url, opciones = {}) {
+  try {
+    return await fetchJson(url, opciones);
+  } catch (primerFallo) {
+    await new Promise(r => setTimeout(r, 700));
+    try {
+      return await fetchJson(url, opciones);
+    } catch (_) {
+      throw primerFallo;
+    }
+  }
+}
+
+// Estado de error con botón de reintento: nunca una grilla vacía silenciosa.
+function mostrarErrorGrilla(mensaje) {
+  document.getElementById('grillaLoading').style.display = 'none';
+  const wrap = document.getElementById('grillaWrap');
+  wrap.style.display = 'block';
+
+  const tbody = document.getElementById('grillaBody');
+  if (tbody) {
+    tbody.innerHTML = `
+      <tr><td colspan="8" style="padding:28px;text-align:center">
+        <div style="color:#D93025;font-weight:700;margin-bottom:6px">
+          <i class="bi bi-exclamation-triangle me-1"></i>No se pudieron cargar las oportunidades
+        </div>
+        <div style="color:#8896B0;font-size:0.85rem;margin-bottom:14px">${mensaje}</div>
+        <button class="btn btn-primary" onclick="cargarGrilla()">
+          <i class="bi bi-arrow-clockwise"></i> Reintentar
+        </button>
+      </td></tr>`;
+  }
+  const badge = document.getElementById('grillaBadge');
+  if (badge) badge.textContent = '— oportunidades';
 }
 
 // ── RENDERIZAR GRILLA ─────────────────────────────────────────────
@@ -828,6 +920,20 @@ function mostrarDetalle(data) {
   inicializarMarcas();
 
   document.getElementById('cardActualizar').style.display = cab.esCierre ? 'none' : 'block';
+
+  // [v11] La corrección solo la ven ADMIN y SUPERVISOR. Se ofrece siempre,
+  // pero el texto cambia cuando la oportunidad está cerrada, que es el caso
+  // que motivó el módulo.
+  const cardCorr = document.getElementById('cardCorreccion');
+  if (cardCorr) {
+    cardCorr.style.display = verTodos ? 'block' : 'none';
+    const txt = document.getElementById('correccionTexto');
+    if (txt && cab.esCierre) {
+      txt.innerHTML = `Esta oportunidad está <strong>cerrada en ${cab.faseVenta}</strong>.
+        Si ese cierre fue un error, revierte el último movimiento: la oportunidad
+        vuelve a su fase anterior y queda registrado quién lo corrigió y por qué.`;
+    }
+  }
   if (cab.esCierre) toast(`Esta oportunidad está cerrada: ${cab.tipoCierre || 'CERRADA'}`, 'ok');
 
   // Scroll suave al detalle
@@ -917,6 +1023,99 @@ async function confirmarCambios(nuevaFaseText) {
   });
 
   return res.isConfirmed;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   [v11] CORRECCIÓN DE CIERRES MAL REGISTRADOS
+   ──────────────────────────────────────────────────────────────────
+   Nada se borra. Revertir marca el movimiento como anulado y la
+   oportunidad regresa a su fase anterior; anular la oportunidad la
+   saca de la grilla y de los indicadores. Ambas quedan auditadas en
+   la base con usuario, fecha y motivo.
+══════════════════════════════════════════════════════════════════ */
+
+// Cabeceras de identidad: el backend valida el rol con ellas.
+function cabecerasIdentidad() {
+  return {
+    'Content-Type': 'application/json',
+    'X-Usuario': usuario || '',
+    'X-Rol': rol || ''
+  };
+}
+
+// Diálogo común: pide el motivo y ejecuta la acción indicada.
+async function pedirMotivoYEjecutar({ titulo, html, textoBoton, endpoint, exito }) {
+  if (!idOportunidadActiva) { toast('Abre primero una oportunidad.', 'err'); return; }
+
+  const { value: motivo, isConfirmed } = await Swal.fire({
+    title: titulo,
+    html,
+    input: 'textarea',
+    inputLabel: 'Motivo de la corrección',
+    inputPlaceholder: 'Ej: el consultor marcó VENTA por error, el cliente aún está en negociación',
+    inputAttributes: { 'aria-label': 'Motivo', maxlength: 500 },
+    showCancelButton: true,
+    confirmButtonText: textoBoton,
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#D93025',
+    cancelButtonColor: '#8896B0',
+    reverseButtons: true,
+    focusCancel: true,
+    inputValidator: v => (!v || v.trim().length < 10)
+      ? 'Describe el motivo con al menos 10 caracteres: queda como traza de auditoría.'
+      : undefined
+  });
+
+  if (!isConfirmed || !motivo) return;
+
+  try {
+    const res = await fetchJson(`${API}/oportunidades/${endpoint}`, {
+      method: 'POST',
+      headers: cabecerasIdentidad(),
+      body: JSON.stringify({ idOportunidad: parseInt(idOportunidadActiva), motivo: motivo.trim() })
+    });
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Listo',
+      text: res.message || exito,
+      confirmButtonColor: '#003087'
+    });
+
+    volverAGrilla();
+    cargarGrilla();
+  } catch (e) {
+    Swal.fire({
+      icon: 'error',
+      title: 'No se pudo completar',
+      text: e.message || 'Error de conexión.',
+      confirmButtonColor: '#003087'
+    });
+  }
+}
+
+function revertirUltimoMovimiento() {
+  pedirMotivoYEjecutar({
+    titulo: '¿Revertir el último movimiento?',
+    html: `El movimiento vigente quedará <strong>anulado</strong> y la oportunidad
+           volverá a la fase anterior.<br>No se borra nada: seguirá visible en el
+           historial marcado como anulado.`,
+    textoBoton: '<i class="bi bi-arrow-counterclockwise me-1"></i> Revertir',
+    endpoint: 'revertir-movimiento',
+    exito: 'Movimiento revertido.'
+  });
+}
+
+function anularOportunidad() {
+  pedirMotivoYEjecutar({
+    titulo: '¿Anular la oportunidad completa?',
+    html: `La oportunidad <strong>desaparecerá de la grilla y de todos los
+           indicadores</strong>.<br>Los datos no se borran: quedan en la base para
+           auditoría. Usa esta opción solo si el registro completo fue un error.`,
+    textoBoton: '<i class="bi bi-trash3 me-1"></i> Anular',
+    endpoint: 'anular',
+    exito: 'Oportunidad anulada.'
+  });
 }
 
 // ── CÁLCULO AIU ───────────────────────────────────────────────────

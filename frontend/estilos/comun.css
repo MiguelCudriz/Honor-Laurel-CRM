@@ -313,3 +313,26 @@ img, svg, canvas { max-width: 100%; }
   border: 1px dashed var(--gris-borde, #D0D9E8);
   border-radius: 10px;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   10. BLOQUE DE CORRECCIÓN (ADMIN / SUPERVISOR)
+   Se diferencia del resto a propósito: son acciones que alteran
+   el historial y no deben confundirse con un guardado normal.
+══════════════════════════════════════════════════════════════ */
+
+.card-correccion { border: 1px solid rgba(217,48,37,0.35); }
+
+.card-header-alerta {
+  background: linear-gradient(135deg, #8E1B14 0%, #D93025 100%) !important;
+}
+
+.correccion-texto {
+  margin: 0 0 16px;
+  font-size: 0.88rem; line-height: 1.5; color: #6B7A9A;
+}
+.correccion-texto strong { color: var(--azul, #003087); }
+
+.btn-peligro {
+  background: #D93025; color: #fff; border: none;
+}
+.btn-peligro:hover { background: #B3261C; color: #fff; }

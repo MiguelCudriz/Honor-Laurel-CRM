@@ -229,6 +229,23 @@ public class CrearOportunidadResponse
 // ─────────────────────────────────────────────────────────────────────────────
 //  READ: Catálogos
 // ─────────────────────────────────────────────────────────────────────────────
+/// <summary>
+/// [v8] Corrección de cierres mal registrados. Solo ADMIN y SUPERVISOR.
+/// El motivo es obligatorio: queda como traza de auditoría en la base.
+/// </summary>
+public class AnularMovimientoRequest
+{
+    public int    IdOportunidad { get; set; }
+    public string Motivo        { get; set; } = string.Empty;
+}
+
+public class AnularMovimientoResponse
+{
+    public int     IdOportunidad  { get; set; }
+    public string? FaseResultante { get; set; }
+    public string  Mensaje        { get; set; } = string.Empty;
+}
+
 public class CatalogoItem
 {
     public int    Id          { get; set; }

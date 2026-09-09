@@ -586,9 +586,13 @@ public class PipelineService
     /// <summary>
     /// [v10] EFECTIVIDAD DE OFERTAS
     ///
-    /// Base de cálculo = oportunidades con probabilidad &gt;= 40%  +  las perdidas
+    /// Base de cálculo = ganadas + activas con probabilidad &gt;= 40% + perdidas
     ///                   (NO ADJUDICADO / NO PRESENTADO).
     /// Numerador       = las que se ganaron.
+    ///
+    /// Las tres partes se devuelven por separado (TotalVenta, TotalActiva,
+    /// TotalPerdida) y suman exactamente TotalBase, de modo que el
+    /// denominador queda desglosado en pantalla y el % es auditable.
     ///
     /// Las perdidas se suman aparte porque su fase tiene probabilidad baja y
     /// quedaban fuera del filtro &gt;= 40%: sin ellas el denominador ignoraba las
@@ -606,6 +610,7 @@ public class PipelineService
                 COUNT(*)                                                       AS TotalBase,
                 SUM(CASE WHEN oa.TipoCierre = 'GANADA'  THEN 1 ELSE 0 END)     AS TotalVenta,
                 SUM(CASE WHEN oa.TipoCierre = 'PERDIDA' THEN 1 ELSE 0 END)     AS TotalPerdida,
+                SUM(CASE WHEN oa.EsCierre    = 0         THEN 1 ELSE 0 END)     AS TotalActiva,
                 CAST(
                     ROUND(
                         CAST(SUM(CASE WHEN oa.TipoCierre = 'GANADA'
