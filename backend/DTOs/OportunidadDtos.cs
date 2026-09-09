@@ -251,6 +251,12 @@ public class CatalogoItem
     /// Solo se popula para FaseVenta.
     /// </summary>
     public bool   RequiereDatosComerciales { get; set; } = false;
+
+    /// <summary>
+    /// [v7] La fase se puede registrar desde cualquier etapa del funnel sin
+    /// que cuente como retroceso (cierres y PASO DE MES). Solo para FaseVenta.
+    /// </summary>
+    public bool   PermiteDesdeCualquierFase { get; set; } = false;
 }
 
 public class MesItem

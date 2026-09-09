@@ -164,20 +164,21 @@
       <!-- ══════════ FORM ACTUALIZAR FASE — un bloque por tema ══════════ -->
       <div id="cardActualizar">
 
-        <!-- ══════════ BLOQUE 1 · MOVIMIENTO ══════════ -->
-        <div class="card" data-seccion>
+        <!-- ══════════ PASO 1 · FASE ══════════
+             Nada más se despliega hasta elegir la fase: es la que define qué
+             campos son obligatorios y cuáles quedan opcionales. -->
+        <div class="card">
           <div class="card-header">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-funnel"></i></div>
-            <h3>Movimiento de la Oportunidad</h3>
-            <span style="margin-left:auto;background:rgba(255,255,255,0.15);color:#fff;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:0.08em;">ACTUALIZACIÓN</span>
+            <h3>¿A qué fase avanza esta oportunidad?</h3>
+            <span style="margin-left:auto;background:rgba(255,255,255,0.15);color:#fff;font-size:0.72rem;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:0.08em;">PASO 1</span>
           </div>
           <div class="card-body">
-            <div class="form-grid">
-
+            <div class="form-grid one">
               <div class="field">
-                <label><i class="bi bi-funnel"></i> Nueva Fase de Venta <span class="req">✦</span></label>
-                <select id="upFaseVenta" autocomplete="off"><option value="">— Seleccionar —</option></select>
-                <span class="hint"><i class="bi bi-info-circle me-1"></i>La fase determina si los valores pueden ser $0</span>
+                <label><i class="bi bi-signpost-split"></i> Nueva Fase de Venta <span class="req">✦</span></label>
+                <select id="upFaseVenta" onchange="onFaseActualizarSeleccionada()" autocomplete="off"><option value="">— Seleccionar —</option></select>
+                <span class="hint" id="upHintFase"><i class="bi bi-info-circle me-1"></i>Según la fase elegida, solo se te pedirán los datos necesarios en esa etapa</span>
               </div>
 
               <!-- Consultor: se asigna solo con la sesión. Oculto, sigue enviándose. -->
@@ -191,16 +192,27 @@
                 <label><i class="bi bi-calendar3"></i> Fecha del Movimiento</label>
                 <input type="date" id="upFecha" readonly autocomplete="off">
               </div>
-
             </div>
           </div>
         </div>
 
+        <!-- ══════════ PASO 2 · QUÉ ACTUALIZAR ══════════
+             Título guía en el propio HTML (no es una alerta emergente).
+             Debajo van las tarjetas desplegables. -->
+        <div id="upPaso2" style="display:none">
+
+          <div class="paso2-titulo">
+            <h3 id="upPaso2Titulo">¿Qué necesitas actualizar en esta oportunidad?</h3>
+            <p id="upPaso2Sub">Abre solo las tarjetas que vayas a modificar. Los campos ya traen la información actual: lo que no toques se queda como está.</p>
+          </div>
+
         <!-- ══════════ BLOQUE 2 · VALORES ══════════ -->
-        <div class="card" data-seccion>
-          <div class="card-header">
+        <div class="card" data-seccion data-acordeon>
+          <div class="card-header" onclick="toggleAcordeon(this)">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-currency-dollar"></i></div>
             <h3>Valores del Movimiento</h3>
+            <span class="acordeon-estado"></span>
+            <i class="bi bi-chevron-down acordeon-toggle"></i>
           </div>
           <div class="card-body">
             <div class="form-grid three">
@@ -235,11 +247,12 @@
         </div>
 
         <!-- ══════════ BLOQUE 3 · CONTRATO Y SERVICIO ══════════ -->
-        <div class="card" data-seccion>
-          <div class="card-header">
+        <div class="card" data-seccion data-acordeon>
+          <div class="card-header" onclick="toggleAcordeon(this)">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-file-earmark-text"></i></div>
             <h3>Contrato y Servicio</h3>
-            <span class="verde-tag">OPCIONAL</span>
+            <span class="acordeon-estado"></span>
+            <i class="bi bi-chevron-down acordeon-toggle"></i>
           </div>
           <div class="card-body">
             <div class="form-grid three">
@@ -286,10 +299,12 @@
         </div>
 
         <!-- ══════════ BLOQUE 4 · VIGENCIA DEL SERVICIO ══════════ -->
-        <div class="card" data-seccion>
-          <div class="card-header">
+        <div class="card" data-seccion data-acordeon>
+          <div class="card-header" onclick="toggleAcordeon(this)">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-calendar-week"></i></div>
             <h3>Vigencia del Servicio</h3>
+            <span class="acordeon-estado"></span>
+            <i class="bi bi-chevron-down acordeon-toggle"></i>
           </div>
           <div class="card-body">
             <div class="form-grid three">
@@ -341,11 +356,12 @@
         </div>
 
         <!-- ══════════ BLOQUE 5 · UBICACIÓN ══════════ -->
-        <div class="card" data-seccion>
-          <div class="card-header">
+        <div class="card" data-seccion data-acordeon>
+          <div class="card-header" onclick="toggleAcordeon(this)">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-geo-alt"></i></div>
             <h3>Ubicación del Servicio</h3>
-            <span class="verde-tag">OPCIONAL</span>
+            <span class="acordeon-estado"></span>
+            <i class="bi bi-chevron-down acordeon-toggle"></i>
           </div>
           <div class="card-body">
             <div class="form-grid">
@@ -369,10 +385,12 @@
         </div>
 
         <!-- ══════════ BLOQUE 6 · OBSERVACIÓN ══════════ -->
-        <div class="card" data-seccion>
-          <div class="card-header">
+        <div class="card" data-seccion data-acordeon>
+          <div class="card-header" onclick="toggleAcordeon(this)">
             <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-chat-text"></i></div>
             <h3>Observación del Movimiento</h3>
+            <span class="acordeon-estado"></span>
+            <i class="bi bi-chevron-down acordeon-toggle"></i>
           </div>
           <div class="card-body">
             <div class="form-grid one">
@@ -390,6 +408,8 @@
             </div>
           </div>
         </div>
+
+        </div><!-- fin #upPaso2 -->
 
       </div>
 

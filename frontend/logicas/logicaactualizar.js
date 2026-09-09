@@ -128,6 +128,143 @@ function fasePermiteValorCero() {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   [v9] FLUJO POR FASE DEL FORMULARIO DE ACTUALIZACIÓN
+   ──────────────────────────────────────────────────────────────────
+   1. El usuario elige la fase (paso 1).
+   2. Recién ahí se despliega el paso 2 con las tarjetas.
+   3. Cada tarjeta se abre o se queda plegada según lo que exija la
+      fase. La exigencia NO está escrita aquí: viene del catálogo
+      (FaseVenta.RequiereDatosComerciales), así que cambiarla es un
+      UPDATE en la base, no tocar este archivo.
+══════════════════════════════════════════════════════════════════ */
+
+// Tarjetas que la fase vuelve obligatorias cuando exige datos comerciales.
+const TARJETAS_COMERCIALES = ['upValorMensual', 'upTiempoMeses', 'upMesInicioServicio'];
+
+function faseSeleccionadaObj() {
+  const id = parseInt(document.getElementById('upFaseVenta').value) || 0;
+  return catalogoFases.find(f => f.id === id) || null;
+}
+
+function faseExigeDatos() {
+  const f = faseSeleccionadaObj();
+  return !!(f && (f.requiereDatosComerciales ?? f.RequiereDatosComerciales));
+}
+
+function fasePermiteDesdeCualquiera(f) {
+  return !!(f && (f.permiteDesdeCualquierFase ?? f.PermiteDesdeCualquierFase));
+}
+
+// Abre o pliega una tarjeta desplegable.
+function toggleAcordeon(header) {
+  const card = header.closest('[data-acordeon]');
+  if (card) card.classList.toggle('abierto');
+}
+
+function abrirAcordeon(card, abrir) {
+  if (card) card.classList.toggle('abierto', !!abrir);
+}
+
+// Marca el estado de cada tarjeta y despliega las que la fase exige.
+function onFaseActualizarSeleccionada() {
+  const paso2 = document.getElementById('upPaso2');
+  const fase  = faseSeleccionadaObj();
+
+  if (!fase) { paso2.style.display = 'none'; return; }
+
+  paso2.style.display = 'block';
+
+  const exige = faseExigeDatos();
+  const sub   = document.getElementById('upPaso2Sub');
+  if (sub) {
+    sub.textContent = exige
+      ? `${fase.descripcion} exige la información comercial completa: valores, contrato y vigencia quedan abiertos y son obligatorios. El resto es opcional.`
+      : 'Abre solo las tarjetas que vayas a modificar. Los campos ya traen la información actual: lo que no toques se queda como está.';
+  }
+
+  document.querySelectorAll('[data-acordeon]').forEach(card => {
+    // Una tarjeta es obligatoria si contiene alguno de los campos comerciales
+    // y la fase los exige.
+    const esComercial = TARJETAS_COMERCIALES.some(id => card.querySelector('#' + id));
+    const requerida   = exige && esComercial;
+
+    const estado = card.querySelector('.acordeon-estado');
+    if (estado) {
+      estado.textContent = requerida ? 'REQUERIDO' : 'OPCIONAL';
+      estado.className   = 'acordeon-estado ' + (requerida ? 'es-requerido' : 'es-opcional');
+    }
+    card.classList.toggle('requerido', requerida);
+    abrirAcordeon(card, requerida);
+  });
+
+  // La observación siempre se pide: es la bitácora del movimiento.
+  const obs = document.getElementById('upObservacion');
+  if (obs) {
+    const card = obs.closest('[data-acordeon]');
+    const est  = card?.querySelector('.acordeon-estado');
+    if (est) { est.textContent = 'REQUERIDO'; est.className = 'acordeon-estado es-requerido'; }
+    abrirAcordeon(card, true);
+  }
+
+  setTimeout(() => paso2.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   [v9] ESTADO DE CADA CAMPO: "Sin modificar" / "Vacío" / "Modificado"
+   ──────────────────────────────────────────────────────────────────
+   El formulario llega precargado con lo que la oportunidad ya tiene.
+   El usuario necesita distinguir tres cosas de un vistazo: lo que ya
+   estaba y no ha tocado, lo que nunca se diligenció, y lo que acaba
+   de cambiar. Se marca con una etiqueta junto al campo.
+══════════════════════════════════════════════════════════════════ */
+
+// Campos del formulario que llevan marca de estado.
+const CAMPOS_MARCABLES = [
+  'upNumeroCotizacion', 'upTiempoMeses', 'upIdModalidad', 'upIdServicio', 'upNit',
+  'upMesInicioServicio', 'upFechaInicioServicio', 'upIdMunicipio',
+  'upValorMensual', 'upCosto'
+];
+
+function marcaDe(el) {
+  let m = el.parentElement.querySelector('.campo-marca');
+  if (!m) {
+    m = document.createElement('span');
+    m.className = 'campo-marca';
+    el.parentElement.appendChild(m);
+  }
+  return m;
+}
+
+function pintarMarca(el, tipo) {
+  const m = marcaDe(el);
+  const txt = { original: '— Sin modificar —', vacio: '— Vacío —', cambiado: 'Modificado' };
+  m.textContent = txt[tipo] || '';
+  m.className   = 'campo-marca marca-' + tipo;
+}
+
+// Se llama al cargar el detalle: guarda el valor original de cada campo.
+function inicializarMarcas() {
+  CAMPOS_MARCABLES.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    el.dataset.valorOriginal = el.value || '';
+    pintarMarca(el, el.value ? 'original' : 'vacio');
+
+    if (!el.dataset.marcaLigada) {
+      el.dataset.marcaLigada = '1';
+      const revisar = () => {
+        const orig = el.dataset.valorOriginal || '';
+        if ((el.value || '') === orig) pintarMarca(el, orig ? 'original' : 'vacio');
+        else                            pintarMarca(el, 'cambiado');
+      };
+      el.addEventListener('input',  revisar);
+      el.addEventListener('change', revisar);
+    }
+  });
+}
+
 // ── LLENAR SELECT ─────────────────────────────────────────────────
 function llenarSelect(id, items, valKey, txtKey) {
   const sel = document.getElementById(id);
@@ -438,6 +575,11 @@ function volverAGrilla() {
   idOportunidadActiva = null;
   tiempoMesesActiva   = 0;
   idModalidadActiva   = 0;
+
+  // [v9] Vuelve al paso 1: sin fase elegida no hay formulario.
+  const p2 = document.getElementById('upPaso2');
+  if (p2) p2.style.display = 'none';
+  document.querySelectorAll('[data-acordeon]').forEach(c => c.classList.remove('abierto', 'requerido'));
   ordenFaseActiva     = 0;
   idFaseActiva        = 0;
   limpiarFormActualizar();
@@ -607,13 +749,23 @@ function mostrarDetalle(data) {
   const elCot = document.getElementById('upNumeroCotizacion');
   if (elCot) elCot.value = cab.numeroCotizacion || '';
 
-  // Pre-llenar servicio (por texto, ya que la cabecera no expone IdServicio directamente)
+  // [v9] Pre-llenar servicio por Id (la vista expone idServicio desde v5).
+  //      Comparar por texto fallaba con tildes o mayúsculas distintas.
   const selServ = document.getElementById('upIdServicio');
-  if (selServ && cab.servicio) {
-    const matchServicio = Array.from(selServ.options).find(
-      o => normalizarTexto(o.textContent) === normalizarTexto(cab.servicio)
-    );
-    if (matchServicio) selServ.value = matchServicio.value;
+  if (selServ) {
+    const idServ = parseInt(cab.idServicio || 0) || 0;
+    selServ.selectedIndex = 0;
+    if (idServ) {
+      const opt = Array.from(selServ.options).find(o => parseInt(o.value) === idServ);
+      if (opt) selServ.value = opt.value;
+    }
+  }
+
+  // Pre-llenar municipio actual para que no se pierda al no tocarlo.
+  const selMun = document.getElementById('upIdMunicipio');
+  if (selMun && cab.idMunicipio && cab.ciudad) {
+    selMun.innerHTML = `<option value="${cab.idMunicipio}">${cab.ciudad}</option>`;
+    selMun.value = String(cab.idMunicipio);
   }
 
   // [v5] Pre-llenar modalidad por Id (la vista ya expone idModalidad).
@@ -649,6 +801,16 @@ function mostrarDetalle(data) {
   if (cab.fechaInicioServicio) calcularMesFinActualizar();
 
   calcularAIU2();
+
+  // [v9] El paso 2 arranca oculto: primero se elige la fase.
+  const selFaseUp = document.getElementById('upFaseVenta');
+  if (selFaseUp) selFaseUp.selectedIndex = 0;
+  const paso2 = document.getElementById('upPaso2');
+  if (paso2) paso2.style.display = 'none';
+  document.querySelectorAll('[data-acordeon]').forEach(c => c.classList.remove('abierto', 'requerido'));
+
+  // [v9] Marca de estado por campo, con los valores ya precargados arriba.
+  inicializarMarcas();
 
   document.getElementById('cardActualizar').style.display = cab.esCierre ? 'none' : 'block';
   if (cab.esCierre) toast(`Esta oportunidad está cerrada: ${cab.tipoCierre || 'CERRADA'}`, 'ok');
@@ -701,8 +863,13 @@ async function actualizarFase() {
     toast('No hay oportunidad seleccionada.', 'err'); return;
   }
 
-  // Campos obligatorios — incluye mes y fecha de inicio
-  const reqs = ['upFaseVenta', 'upConsultor', 'upTiempoMeses', 'upMesInicioServicio', 'upFechaInicioServicio'];
+  // [v9] Los campos obligatorios dependen de la fase elegida.
+  //      En Contacto / Visita solo se pide fase y observación; en Propuesta,
+  //      Negociación y Venta se exige además la información comercial.
+  //      La regla vive en el catálogo (RequiereDatosComerciales).
+  const reqs = faseExigeDatos()
+    ? ['upFaseVenta', 'upConsultor', 'upTiempoMeses', 'upMesInicioServicio', 'upFechaInicioServicio']
+    : ['upFaseVenta', 'upConsultor'];
   let ok = true;
   reqs.forEach(id => {
     const el = document.getElementById(id);
@@ -725,7 +892,26 @@ async function actualizarFase() {
   const nuevaFaseObj  = catalogoFases.find(f => f.id === nuevaFaseId);
   const nuevaOrden    = parseInt(nuevaFaseObj?.ordenFunnel || nuevaFaseObj?.OrdenFunnel || 0);
 
-  if (ordenFaseActiva > 0 && nuevaOrden > 0 && nuevaFaseId !== idFaseActiva && nuevaOrden < ordenFaseActiva) {
+  // [v9] Las fases de cierre (NO PRESENTADO / NO ADJUDICADO / VENTA) y PASO DE
+  //      MES se pueden registrar desde cualquier etapa: perder una oportunidad
+  //      no es retroceder. El permiso viene del catálogo, no de una lista fija.
+  if (fasePermiteDesdeCualquiera(nuevaFaseObj)) {
+    const esPerdida = normalizarTexto(nuevaFaseText).includes('NO ');
+    if (esPerdida) {
+      const confirmar = await Swal.fire({
+        icon: 'question',
+        title: '¿Cerrar la oportunidad?',
+        html: `Vas a registrar <strong>${nuevaFaseText}</strong>.<br>
+               La oportunidad quedará cerrada y no se podrán registrar más movimientos.`,
+        showCancelButton: true,
+        confirmButtonColor: '#003087',
+        confirmButtonText: 'Sí, cerrar',
+        cancelButtonText: 'Cancelar'
+      });
+      if (!confirmar.isConfirmed) return;
+    }
+  }
+  else if (ordenFaseActiva > 0 && nuevaOrden > 0 && nuevaFaseId !== idFaseActiva && nuevaOrden < ordenFaseActiva) {
     nuevaFaseSel.classList.add('error');
     const faseActualNombre = catalogoFases.find(f => {
       const ord = parseInt(f.ordenFunnel || f.OrdenFunnel || 0);

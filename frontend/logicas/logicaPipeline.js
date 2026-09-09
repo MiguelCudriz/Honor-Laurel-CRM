@@ -680,7 +680,15 @@ function renderRegion(data) {
    TOP CLIENTES — con filtro ganada / abierta / todas
 ══════════════════════════════════════════════════════════════ */
 function renderTopClientes(data) {
-  if (!data?.length) { destroyChart('clientes'); return; }
+  if (!data?.length) {
+    // [v9] Además del gráfico hay que vaciar la tabla "Detalle": si solo se
+    // destruía el chart, las filas del año anterior seguían en pantalla y
+    // parecía que 2027 tenía clientes que en realidad eran de 2026.
+    limpiarCharts('clientes');
+    const tb = document.querySelector('#tablaTopClientes tbody');
+    if (tb) tb.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#8896B0;padding:18px">${MSG_SIN_DATOS}</td></tr>`;
+    return;
+  }
   destroyChart('clientes');
 
   charts.clientes = new Chart(document.getElementById('chartClientes').getContext('2d'), {
@@ -1073,26 +1081,18 @@ function renderForecastResumen(d, vista) {
    EFECTIVIDAD DE OFERTAS
 ══════════════════════════════════════════════════════════════ */
 function renderEfectividad(data) {
-  const thead = document.getElementById('efectividadHead');
   const tbody = document.getElementById('efectividadBody');
-  if (!tbody || !thead) return;
+  if (!tbody) return;
 
   // Umbrales de color
   //   ≤ 10%        → ROJO         (no cumple)
   //   10.1% - 11%  → VERDE claro  (cumple)
   //   > 11%        → VERDE oscuro (supera)
   const colorPct = pct => {
-    if (pct <= 10) return { bg: '#D93025', label: 'NO CUMPLE' };
-    if (pct <= 11) return { bg: '#5CB85C', label: 'CUMPLE'    };
-    return           { bg: '#2A8C38', label: 'SUPERA'    };
+    if (pct <= 10) return '#D93025';
+    if (pct <= 11) return '#5CB85C';
+    return           '#2A8C38';
   };
-
-  // Encabezado: meses en columnas + acumulado, como el cuadro de Forecast
-  thead.innerHTML = `<tr>
-    <th>Indicador</th>
-    ${MESES_ABR.map(m => `<th class="mes-col">${m}</th>`).join('')}
-    <th class="total-col">ACUMULADO</th>
-  </tr>`;
 
   if (!data || !data.length) {
     tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;color:#8896B0;padding:22px">
@@ -1117,29 +1117,24 @@ function renderEfectividad(data) {
   // Acumulado real = ventas del año / ofertas del año.
   // No es el promedio de los 12 porcentajes: eso le daría el mismo peso a un
   // mes con 1 oferta que a uno con 40.
-  const pctAcum    = totOfertas > 0 ? (totVentas / totOfertas) * 100 : 0;
-  const colAcum    = colorPct(pctAcum);
+  const pctAcum = totOfertas > 0 ? (totVentas / totOfertas) * 100 : 0;
 
-  const filaConteo = (label, arr, total, clase) => `<tr class="${clase}">
-    <td>${label}</td>
+  const filaConteo = (label, arr, total, clase) => `<tr>
+    <td class="res-lbl ${clase}">${label}</td>
     ${arr.map(v => `<td class="${v ? 'celda-activa' : 'celda-vacia'}">${v || '—'}</td>`).join('')}
     <td class="col-total">${total}</td>
   </tr>`;
 
   tbody.innerHTML =
-    filaConteo('OFERTAS ≥ 40%', ofertas, totOfertas, 'efect-row-ofertas') +
-    filaConteo('VENTAS GANADAS', ventas, totVentas, 'efect-row-ventas') +
+    filaConteo('OFERTAS<br>PROB. ≥ 40%', ofertas, totOfertas, 'ofertas-lbl') +
+    filaConteo('VENTAS<br>GANADAS',      ventas,  totVentas,  'ganadas-lbl') +
     `<tr class="efect-row-pct">
-      <td>% EFECTIVIDAD</td>
+      <td class="res-lbl cumpl-lbl">% EFECTIVIDAD</td>
       ${pcts.map((p, i) => {
-        if (p === null || ofertas[i] === 0)
-          return '<td class="celda-vacia">—</td>';
-        const c = colorPct(p);
-        return `<td><span class="efect-pill" style="background:${c.bg}">${p.toFixed(1)}%</span></td>`;
+        if (p === null || ofertas[i] === 0) return '<td class="celda-vacia">—</td>';
+        return `<td style="color:${colorPct(p)};font-weight:800">${p.toFixed(1)}%</td>`;
       }).join('')}
-      <td class="col-total">
-        <span class="efect-pill efect-pill-lg" style="background:${colAcum.bg}">${pctAcum.toFixed(1)}%</span>
-      </td>
+      <td class="col-total" style="color:${colorPct(pctAcum)}">${pctAcum.toFixed(1)}%</td>
     </tr>`;
 }
 

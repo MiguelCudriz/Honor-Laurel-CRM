@@ -72,7 +72,7 @@ public class OportunidadService
         using var conn = _db.CreateConnection();
         return await conn.QueryAsync<CatalogoItem>(@"
             SELECT IdFaseVenta AS Id, Descripcion, Activo, OrdenFunnel,
-                   RequiereDatosComerciales
+                   RequiereDatosComerciales, PermiteDesdeCualquierFase
             FROM   CRM.FaseVenta
             WHERE  Activo = 1
             ORDER  BY OrdenFunnel");

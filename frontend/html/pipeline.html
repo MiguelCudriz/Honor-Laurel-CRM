@@ -364,30 +364,35 @@
     <!-- ══════════════════════════════════════════════════════════════
          EFECTIVIDAD DE OFERTAS
     ══════════════════════════════════════════════════════════════ -->
-    <div class="pipe-card" style="max-width:520px">
-      <div class="pipe-card-header">
-        <div class="pipe-card-icon"><i class="bi bi-bullseye"></i></div>
-        <div>
-          <h3>Efectividad de Ofertas</h3>
-          <p>% de ventas cerradas sobre oportunidades con probabilidad ≥ 40%</p>
-        </div>
+    <!-- [v9] Mismo contenedor y encabezado que "Resumen de Ventas Nuevas por
+         Modalidad": ancho completo, cabecera azul marino y columnas de mes
+         uniformes. Antes la tarjeta tenía max-width:520px y las 14 columnas
+         quedaban comprimidas con scroll dentro de media pantalla. -->
+    <div class="forecast-table-wrap" style="margin-bottom:32px">
+      <div class="forecast-table-topbar">
+        <span class="forecast-table-title">
+          <i class="bi bi-bullseye me-2"></i>Efectividad de Ofertas
+        </span>
+        <small style="color:var(--gris-med)">% de ventas cerradas sobre oportunidades con probabilidad ≥ 40%</small>
         <div class="efect-umbrales">
           <span class="efect-umbral" style="background:#D93025">≤ 10% NO CUMPLE</span>
           <span class="efect-umbral" style="background:#5CB85C">10.1–11% CUMPLE</span>
           <span class="efect-umbral" style="background:#2A8C38">&gt;11% SUPERA</span>
         </div>
       </div>
-      <div class="pipe-card-body" style="padding:0">
-        <!-- [v8] Lectura horizontal: los meses son columnas, igual que el
-             cuadro de Forecast. Antes eran 13 filas apiladas. -->
-        <div class="forecast-table-scroll">
-          <table class="forecast-table efect-table">
-            <thead id="efectividadHead"></thead>
-            <tbody id="efectividadBody">
-              <tr><td colspan="14" class="loading-cell">Cargando...</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="forecast-table-scroll">
+        <table class="forecast-table forecast-resumen-table efect-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-left:16px;width:200px">Concepto</th>
+              <th class="mes-col">ENE</th><th class="mes-col">FEB</th><th class="mes-col">MAR</th><th class="mes-col">ABR</th><th class="mes-col">MAY</th><th class="mes-col">JUN</th><th class="mes-col">JUL</th><th class="mes-col">AGO</th><th class="mes-col">SEP</th><th class="mes-col">OCT</th><th class="mes-col">NOV</th><th class="mes-col">DIC</th>
+              <th class="total-col">TOTAL</th>
+            </tr>
+          </thead>
+          <tbody id="efectividadBody">
+            <tr><td colspan="14" class="loading-cell">Cargando...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

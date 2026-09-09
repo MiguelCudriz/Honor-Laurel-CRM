@@ -206,3 +206,71 @@ img, svg, canvas { max-width: 100%; }
   text-align: center;
 }
 .sin-datos-msg i { font-size: 1.2rem; opacity: 0.7; }
+
+/* ══════════════════════════════════════════════════════════════
+   6. TARJETAS DESPLEGABLES (ACORDEÓN)
+   La cabecera actúa como botón: abre y cierra el cuerpo.
+   Se usa en el formulario de actualización, donde el usuario abre
+   solo lo que va a modificar.
+══════════════════════════════════════════════════════════════ */
+
+[data-acordeon] > .card-header { cursor: pointer; user-select: none; }
+
+[data-acordeon] > .card-body {
+  display: none;
+  animation: acordeonAbrir 0.18s ease;
+}
+[data-acordeon].abierto > .card-body { display: block; }
+
+@keyframes acordeonAbrir {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.acordeon-toggle {
+  margin-left: 10px;
+  color: rgba(255,255,255,0.85);
+  font-size: 1rem;
+  transition: transform 0.2s ease;
+}
+[data-acordeon].abierto .acordeon-toggle { transform: rotate(180deg); }
+
+.acordeon-estado {
+  margin-left: auto;
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.09em;
+  padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+}
+.acordeon-estado.es-requerido { background: var(--verde, #39B54A); color: #fff; }
+.acordeon-estado.es-opcional  { background: rgba(255,255,255,0.18); color: #fff; }
+
+/* Tarjeta que la fase vuelve obligatoria */
+[data-acordeon].requerido { box-shadow: 0 0 0 2px rgba(57,181,74,0.35), 0 2px 16px rgba(0,48,135,0.07); }
+
+/* ══════════════════════════════════════════════════════════════
+   7. TÍTULO GUÍA DEL PASO 2
+══════════════════════════════════════════════════════════════ */
+
+.paso2-titulo { margin: 4px 0 18px; }
+.paso2-titulo h3 {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 1.35rem; font-weight: 800; letter-spacing: 0.02em;
+  color: var(--azul, #003087); margin: 0 0 4px;
+}
+.paso2-titulo p {
+  margin: 0; font-size: 0.86rem; color: #6B7A9A; max-width: 760px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8. MARCA DE ESTADO POR CAMPO
+   "Sin modificar" = ya tenía ese dato y no se ha tocado.
+   "Vacío"         = nunca se diligenció.
+   "Modificado"    = cambió en esta sesión.
+══════════════════════════════════════════════════════════════ */
+
+.campo-marca {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.campo-marca.marca-original { color: #8896B0; }
+.campo-marca.marca-vacio    { color: #C0A24A; }
+.campo-marca.marca-cambiado { color: var(--verde-dark, #2A8C38); }

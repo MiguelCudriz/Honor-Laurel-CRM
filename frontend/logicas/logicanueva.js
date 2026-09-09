@@ -420,6 +420,45 @@ function maxMesesModalidad() {
   return (m && m.maxMeses) ? m.maxMeses : null;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   [v9] SANEO DE CAMPOS DEL CLIENTE NUEVO
+   El navegador no impide pegar texto ni exceder longitudes: la
+   restricción se aplica aquí, en cada tecla y en cada pegado.
+══════════════════════════════════════════════════════════════ */
+
+// Deja solo dígitos y recorta al máximo permitido.
+function soloDigitos(el, max) {
+  el.value = (el.value || '').replace(/\D/g, '').slice(0, max);
+}
+
+// El correo se captura y se guarda SIEMPRE en mayúsculas.
+function onCorreoInput(el) {
+  const pos = el.selectionStart;
+  el.value = (el.value || '').toUpperCase().replace(/\s/g, '');
+  try { el.setSelectionRange(pos, pos); } catch (_) {}
+  marcarCorreo(el);
+}
+
+// Formato mínimo: algo@algo.algo
+const RE_CORREO = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/;
+
+function correoEsValido(valor) {
+  const v = (valor || '').trim().toUpperCase();
+  return v === '' || RE_CORREO.test(v);   // vacío es válido: el campo es opcional
+}
+
+function marcarCorreo(el) {
+  const hint = document.getElementById('hintCorreoNuevo');
+  const ok   = correoEsValido(el.value);
+  el.classList.toggle('error', !ok);
+  if (hint) {
+    hint.innerHTML = ok
+      ? '<i class="bi bi-info-circle me-1"></i>Debe contener @ y dominio · se guarda en mayúsculas'
+      : '<i class="bi bi-exclamation-circle me-1"></i>Formato inválido · ejemplo: CONTACTO@EMPRESA.COM';
+  }
+  return ok;
+}
+
 // ── CARGAR CATÁLOGOS ──────────────────────────────────────────────
 async function cargarCatalogos() {
   try {
@@ -656,6 +695,28 @@ async function guardarOportunidad() {
     if (!razonSocial)       { toast('La Razón Social es obligatoria.', 'err'); return; }
     if (!idSectorEconomico) { toast('Selecciona el Sector Económico.', 'err'); return; }
 
+    // [v9] Reglas de captura del cliente nuevo.
+    const elNit    = document.getElementById('nitNuevo');
+    const elTel    = document.getElementById('telNuevo');
+    const elCorreo = document.getElementById('correoNuevo');
+
+    if (nit && !/^\d{1,9}$/.test(nit)) {
+      elNit.classList.add('error');
+      toast('El NIT debe tener solo números, máximo 9 dígitos.', 'err'); return;
+    }
+    elNit.classList.remove('error');
+
+    const telVal = elTel.value.trim();
+    if (telVal && !/^\d{10}$/.test(telVal)) {
+      elTel.classList.add('error');
+      toast('El teléfono debe tener exactamente 10 dígitos numéricos.', 'err'); return;
+    }
+    elTel.classList.remove('error');
+
+    if (!marcarCorreo(elCorreo)) {
+      toast('El correo no tiene un formato válido (debe incluir @ y dominio).', 'err'); return;
+    }
+
     const yaExiste = await verificarClienteExistente(nit, razonSocial);
     if (yaExiste) {
       const confirm = await Swal.fire({
@@ -788,7 +849,10 @@ async function guardarOportunidad() {
   btn.innerHTML = '<span class="spinner"></span>Guardando...';
 
   const telNuevo    = modoCliente === 'nuevo' ? (document.getElementById('telNuevo').value.trim()    || null) : null;
-  const correoNuevo = modoCliente === 'nuevo' ? (document.getElementById('correoNuevo').value.trim() || null) : null;
+  // [v9] El correo se persiste en mayúsculas, sin importar cómo lo escriban.
+  const correoNuevo = modoCliente === 'nuevo'
+    ? (document.getElementById('correoNuevo').value.trim().toUpperCase() || null)
+    : null;
 
   const mesInicioVal = esContacto ? null : (parseInt(document.getElementById('mesInicioServicio').value) || null);
 

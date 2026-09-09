@@ -692,38 +692,26 @@ body {
   text-transform: uppercase; white-space: nowrap;
 }
 
-/* [v8] Lectura horizontal con el mismo lenguaje visual del cuadro de
-   Forecast: la tabla lleva las clases .forecast-table .efect-table, así que
-   hereda cabecera azul, celdas y columna de total. Aquí solo van las
-   diferencias propias del indicador. */
-.efect-table { min-width: 980px; }
-
-.efect-table thead th.total-col { min-width: 120px; }
-
-/* Las tres filas se distinguen por tono, como FIJO / OCASIONAL en Forecast */
-.efect-table tbody .efect-row-ofertas td { color: var(--azul-med); }
-.efect-table tbody .efect-row-ventas  td { color: var(--verde-dark); }
-.efect-table tbody .efect-row-ventas  td:first-child { background: rgba(57,181,74,0.08); }
+/* [v9] La tabla usa las mismas clases que el resumen de Forecast
+   (.forecast-table .forecast-resumen-table), así que hereda cabecera, celdas,
+   columna TOTAL y comportamiento responsive. Aquí solo van las etiquetas de
+   fila propias del indicador, con el mismo patrón de color .res-lbl. */
+.res-lbl.ofertas-lbl {
+  background: #004BB8; color: #fff;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
+  text-align: center; padding: 10px 12px; line-height: 1.25;
+}
+.res-lbl.ganadas-lbl {
+  background: #2A8C38; color: #fff;
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
+  text-align: center; padding: 10px 12px; line-height: 1.25;
+}
 
 .efect-table tbody .efect-row-pct td {
-  padding: 8px 6px;
   border-top: 2px solid var(--azul);
-  text-align: center;
+  font-weight: 800;
 }
-.efect-table tbody .efect-row-pct td:first-child {
-  text-align: left;
-  background: rgba(0,48,135,0.08);
-  color: var(--azul);
-}
-.efect-table tbody tr:last-child td { border-bottom: none; }
 
-.efect-pill {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 58px; padding: 4px 10px;
-  border-radius: 20px; color: #fff;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.92rem; font-weight: 800; letter-spacing: 0.03em;
-  white-space: nowrap;
-}
-.efect-pill-lg { min-width: 68px; font-size: 1.05rem; }
+/* Los umbrales viajan en la barra superior de la tabla */
+.forecast-table-topbar .efect-umbrales { margin-left: auto; }
 

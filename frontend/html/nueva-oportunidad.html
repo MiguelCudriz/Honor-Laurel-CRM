@@ -102,8 +102,9 @@
         <div id="panelNuevo" style="display:none">
           <div class="form-grid">
             <div class="field">
-              <label><i class="bi bi-hash"></i> NIT <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional · solo números · máx. 13)</span></label>
-              <input type="text" id="nitNuevo" inputmode="numeric" maxlength="13" placeholder="XXXXXXXXXXXXX" oninput="this.value=this.value.replace(/\D/g,'').slice(0,13)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <label><i class="bi bi-hash"></i> NIT <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional · solo números · máx. 9)</span></label>
+              <input type="text" id="nitNuevo" inputmode="numeric" maxlength="9" placeholder="XXXXXXXXX" oninput="soloDigitos(this, 9)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <span class="hint" id="hintNitNuevo"><i class="bi bi-info-circle me-1"></i>Solo dígitos · 9 como máximo</span>
             </div>
             <div class="field">
               <label><i class="bi bi-building"></i> Razón Social <span class="req">✦</span></label>
@@ -115,11 +116,13 @@
             </div>
             <div class="field">
               <label><i class="bi bi-telephone"></i> Teléfono <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional)</span></label>
-              <input type="text" id="telNuevo" inputmode="tel" placeholder="Ej: 3001234567" maxlength="20" oninput="this.value=this.value.replace(/[^0-9+\-\s()]/g,'')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <input type="text" id="telNuevo" inputmode="numeric" placeholder="Ej: 3001234567" maxlength="10" oninput="soloDigitos(this, 10)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <span class="hint" id="hintTelNuevo"><i class="bi bi-info-circle me-1"></i>Solo dígitos · exactamente 10</span>
             </div>
             <div class="field">
               <label><i class="bi bi-envelope"></i> Correo Electrónico <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8896B0;font-size:0.7rem">(opcional)</span></label>
-              <input type="email" id="correoNuevo" placeholder="contacto@empresa.com" autocomplete="off">
+              <input type="email" id="correoNuevo" placeholder="CONTACTO@EMPRESA.COM" style="text-transform:uppercase" oninput="onCorreoInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <span class="hint" id="hintCorreoNuevo"><i class="bi bi-info-circle me-1"></i>Debe contener @ y dominio · se guarda en mayúsculas</span>
             </div>
           </div>
         </div>
