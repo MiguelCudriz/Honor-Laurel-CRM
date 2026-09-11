@@ -17,7 +17,11 @@ public class CrearOportunidadRequest
     public int IdTipoCliente { get; set; }
 
     [Required]
-    public int IdSectorEconomico { get; set; }
+    /// <summary>
+    /// [v9] Opcional. Solo se usa al registrar un cliente NUEVO. Para ACTUAL y
+    /// PROFUNDIZACIÓN el cliente ya existe y su sector no se debe sobrescribir.
+    /// </summary>
+    public int? IdSectorEconomico { get; set; }
 
     [MaxLength(30)]
     public string? NumeroCotizacion { get; set; }
@@ -274,6 +278,13 @@ public class CatalogoItem
     /// que cuente como retroceso (cierres y PASO DE MES). Solo para FaseVenta.
     /// </summary>
     public bool   PermiteDesdeCualquierFase { get; set; } = false;
+
+    /// <summary>
+    /// [v9] La fase exige N° de cotización. Solo para FaseVenta.
+    /// La regla vive en CRM.FaseVenta.RequiereCotizacion, así que ampliarla o
+    /// restringirla es un UPDATE, no un cambio de código.
+    /// </summary>
+    public bool   RequiereCotizacion { get; set; } = false;
 }
 
 public class MesItem

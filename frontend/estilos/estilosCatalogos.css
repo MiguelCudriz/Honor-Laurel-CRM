@@ -1,0 +1,203 @@
+/* ============================================================================
+   estilosCatalogos.css — CRM Honor · Administración de catálogos
+   Reutiliza las variables y la tarjeta base de estilosadmin.css; aquí solo van
+   el selector de catálogos, la tabla y el formulario del diálogo.
+============================================================================ */
+
+/* ── SELECTOR DE CATÁLOGOS ──────────────────────────────────── */
+.cat-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 14px 16px;
+  background: var(--blanco, #fff);
+  border: 1px solid var(--gris-borde, #D0D9E8);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 48, 135, 0.05);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.cat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--azul-med, #004BB8);
+  box-shadow: 0 6px 18px rgba(0, 48, 135, 0.12);
+}
+.cat-card i {
+  font-size: 1.25rem;
+  color: var(--azul-med, #004BB8);
+  margin-bottom: 4px;
+}
+.cat-card-titulo {
+  font-family: 'Barlow Condensed', 'Barlow', sans-serif;
+  font-size: 1rem; font-weight: 800; letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--azul, #003087);
+  line-height: 1.15;
+}
+.cat-card-total { font-size: 0.74rem; color: #8896B0; }
+
+.cat-card.activo {
+  background: linear-gradient(135deg, var(--azul, #003087) 0%, var(--azul-med, #004BB8) 100%);
+  border-color: transparent;
+}
+.cat-card.activo i,
+.cat-card.activo .cat-card-titulo { color: #fff; }
+.cat-card.activo .cat-card-total  { color: rgba(255, 255, 255, 0.72); }
+
+.cat-cargando {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 26px; color: #8896B0; font-size: 0.88rem;
+  background: var(--blanco, #fff);
+  border: 1px dashed var(--gris-borde, #D0D9E8);
+  border-radius: 12px;
+}
+.cat-cargando.cat-error { color: #D93025; border-color: rgba(217, 48, 37, 0.4); }
+
+/* ── BARRA DE HERRAMIENTAS ──────────────────────────────────── */
+.cat-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 16px; flex-wrap: wrap;
+}
+
+.cat-buscador { position: relative; flex: 1 1 260px; }
+.cat-buscador i {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  color: #8896B0; font-size: 0.9rem; pointer-events: none;
+}
+.cat-buscador input {
+  width: 100%; padding: 10px 14px 10px 36px;
+  border: 1px solid var(--gris-borde, #D0D9E8);
+  border-radius: 10px;
+  background: var(--gris-suave, #F4F6FA);
+  font-family: 'Barlow', sans-serif; font-size: 0.9rem;
+}
+.cat-buscador input:focus {
+  outline: none; background: #fff;
+  border-color: var(--azul-med, #004BB8);
+  box-shadow: 0 0 0 3px rgba(0, 75, 184, 0.12);
+}
+
+.cat-check {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 0.84rem; color: #6B7A9A; white-space: nowrap; cursor: pointer;
+}
+.cat-check input { width: 16px; height: 16px; cursor: pointer; }
+
+.cat-badge {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.18); color: #fff;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+  padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+}
+
+/* ── TABLA ──────────────────────────────────────────────────── */
+.cat-tabla-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--gris-borde, #D0D9E8);
+  border-radius: 10px;
+}
+.cat-tabla-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+.cat-tabla-wrap::-webkit-scrollbar-track { background: var(--gris-suave, #F4F6FA); }
+.cat-tabla-wrap::-webkit-scrollbar-thumb {
+  background: #C5CFDF; border-radius: 8px; border: 2px solid var(--gris-suave, #F4F6FA);
+}
+
+.cat-tabla { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 620px; }
+
+.cat-tabla thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--gris-suave, #F4F6FA);
+  padding: 10px 14px; text-align: left;
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: #8896B0; white-space: nowrap;
+  box-shadow: inset 0 -2px 0 var(--gris-borde, #D0D9E8);
+}
+
+.cat-tabla tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--gris-borde, #D0D9E8);
+  color: #38445C;
+}
+.cat-tabla tbody tr:last-child td { border-bottom: none; }
+.cat-tabla tbody tr:hover td { background: rgba(0, 48, 135, 0.03); }
+
+.cat-tabla .fila-inactiva td { opacity: 0.55; }
+.cat-id     { color: #8896B0; font-variant-numeric: tabular-nums; }
+.cat-nombre { font-weight: 600; color: var(--azul, #003087); }
+
+.cat-estado {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em;
+}
+.cat-estado.activo   { background: rgba(57, 181, 74, 0.15); color: #2A8C38; }
+.cat-estado.inactivo { background: rgba(136, 150, 176, 0.18); color: #6B7A9A; }
+
+.cat-usos {
+  display: inline-block; min-width: 30px; text-align: center;
+  padding: 3px 8px; border-radius: 8px;
+  background: rgba(0, 75, 184, 0.1); color: var(--azul-med, #004BB8);
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.cat-usos.cero { background: transparent; color: #C5CFDF; }
+
+.cat-acciones { white-space: nowrap; }
+.cat-btn-icono {
+  width: 30px; height: 30px; margin-right: 4px;
+  border: 1px solid var(--gris-borde, #D0D9E8);
+  border-radius: 8px; background: #fff;
+  color: var(--azul-med, #004BB8);
+  cursor: pointer; transition: all 0.14s ease;
+}
+.cat-btn-icono:hover {
+  background: var(--azul-med, #004BB8); color: #fff;
+  border-color: var(--azul-med, #004BB8);
+}
+.cat-btn-icono.peligro { color: #D93025; }
+.cat-btn-icono.peligro:hover { background: #D93025; border-color: #D93025; color: #fff; }
+
+.cat-vacio {
+  padding: 28px !important; text-align: center;
+  color: #8896B0; font-size: 0.88rem;
+}
+.cat-vacio.cat-error { color: #D93025; }
+
+/* ── FORMULARIO DENTRO DEL DIÁLOGO ──────────────────────────── */
+.swal-form { text-align: left; padding: 4px 6px; }
+
+.swal-lbl {
+  display: block; margin: 10px 0 2px;
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--azul, #003087);
+}
+.swal-in {
+  width: 100% !important; margin: 0 !important;
+  font-size: 0.92rem !important; height: auto !important;
+  padding: 9px 12px !important;
+}
+.swal-check {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 14px; font-size: 0.86rem; color: #6B7A9A; cursor: pointer;
+}
+.swal-check input { width: 16px; height: 16px; cursor: pointer; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cat-selector { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cat-toolbar .btn { flex: 1 1 100%; justify-content: center; }
+  .cat-badge { margin-left: 0; }
+}
+@media (max-width: 480px) {
+  .cat-selector { grid-template-columns: 1fr; }
+}

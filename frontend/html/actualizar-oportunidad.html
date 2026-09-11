@@ -39,6 +39,7 @@
     <a class="sidebar-item" href="admin-metas.html">
     <span class="icon"><i class="bi bi-bullseye"></i></span>Metas Comerciales
     </a>
+    <a class="sidebar-item" href="admin-catalogos.html"><span class="icon"><i class="bi bi-collection"></i></span>Catálogos</a>
     <span class="sidebar-label" id="sidebarPipelineLabel" style="display:none">Indicadores BI</span>
     <a class="sidebar-item" id="sidebarPipelineItem" href="#" onclick="verPipeline()" style="display:none"><span class="icon"><i class="bi bi-bar-chart-line"></i></span>Ver Indicadores</a>
     <div class="sidebar-divider" id="sidebarAdminDivider" style="display:none"></div>
@@ -289,7 +290,7 @@
               <div class="field">
                 <label><i class="bi bi-upc-scan"></i> N° Cotización</label>
                 <input type="text" id="upNumeroCotizacion" placeholder="Ej: DENXXX-XXXX-XXXX" style="text-transform:uppercase" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                <span class="hint"><i class="bi bi-info-circle me-1"></i>Deja vacío para no modificar el número actual</span>
+                <span class="hint" id="upHintCotizacion"><i class="bi bi-info-circle me-1"></i>Deja vacío para no modificar el número actual</span>
               </div>
 
               <div class="field">

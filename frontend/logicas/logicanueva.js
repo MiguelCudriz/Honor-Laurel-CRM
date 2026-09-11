@@ -98,6 +98,14 @@ function obtenerGrupoFase() {
   const desc = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
   if (!desc) return null;
   if (FASES_CONTACTO.some(f => desc === normalizarTexto(f))) return 'contacto';
+  // [v9] La exigencia del N° de cotización sale del catálogo
+  // (FaseVenta.RequiereCotizacion), que es lo que también valida el SP.
+  // La lista FASES_COTIZACION_OBLIGATORIA queda solo como respaldo por si el
+  // catálogo aún no trae la columna.
+  const fase = catalogoFases.find(f => f.id === (parseInt(sel.value) || 0));
+  if (fase && (fase.requiereCotizacion ?? fase.RequiereCotizacion) !== undefined)
+    return (fase.requiereCotizacion ?? fase.RequiereCotizacion) ? 'cotizacion' : 'libre';
+
   if (FASES_COTIZACION_OBLIGATORIA.some(f => desc === normalizarTexto(f))) return 'cotizacion';
   return 'libre';
 }
@@ -195,12 +203,12 @@ function continuarDesdeCliente() {
 
   } else if (modoCliente === 'actual') {
     if (!clienteSeleccionado) { toast('Busca y selecciona un cliente existente.', 'err'); return; }
-    if (!document.getElementById('sectorActual').value) { toast('Selecciona el Sector Económico.', 'err'); return; }
+    // [v9] Sector económico: no aplica a clientes ACTUAL (ya está en la base).
     nombreResumen = clienteSeleccionado.razonSocial;
 
   } else if (modoCliente === 'profundizacion') {
     if (!clienteProfSeleccionado) { toast('Busca y selecciona el cliente a profundizar.', 'err'); return; }
-    if (!document.getElementById('sectorProfundizacion').value) { toast('Selecciona el Sector Económico.', 'err'); return; }
+    // [v9] Sector económico: no aplica a PROFUNDIZACIÓN (ya está en la base).
     nombreResumen = clienteProfSeleccionado.razonSocial;
   }
 
@@ -683,7 +691,7 @@ async function guardarOportunidad() {
   const esContacto   = grupo === 'contacto';
   const esCotizacion = grupo === 'cotizacion';
 
-  let nit, razonSocial, idTipoCliente, idSectorEconomico;
+  let nit, razonSocial, idTipoCliente, idSectorEconomico = null;
 
   // ── MODO NUEVO ──
   if (modoCliente === 'nuevo') {
@@ -740,20 +748,20 @@ async function guardarOportunidad() {
     if (!clienteSeleccionado) { toast('Busca y selecciona un cliente existente.', 'err'); return; }
     nit               = clienteSeleccionado.nit || null;
     razonSocial       = clienteSeleccionado.razonSocial;
-    idSectorEconomico = parseInt(document.getElementById('sectorActual').value);
+    // [v9] El cliente ya existe: su sector no se envía y por tanto el SP no
+    //      lo sobrescribe. Antes se mandaba lo que hubiera en el formulario y
+    //      un valor mal elegido pisaba el sector correcto del cliente.
+    idSectorEconomico = null;
     idTipoCliente     = await resolverIdTipo('ACTUAL');
-
-    if (!idSectorEconomico) { toast('Selecciona el Sector Económico.', 'err'); return; }
 
   // ── MODO PROFUNDIZACIÓN ──
   } else if (modoCliente === 'profundizacion') {
     if (!clienteProfSeleccionado) { toast('Busca y selecciona el cliente a profundizar.', 'err'); return; }
     nit               = clienteProfSeleccionado.nit || null;
     razonSocial       = clienteProfSeleccionado.razonSocial;
-    idSectorEconomico = parseInt(document.getElementById('sectorProfundizacion').value);
+    // [v9] Igual que en ACTUAL: el sector del cliente no se toca.
+    idSectorEconomico = null;
     idTipoCliente     = await resolverIdTipo('PROFUNDIZACION');
-
-    if (!idSectorEconomico) { toast('Selecciona el Sector Económico.', 'err'); return; }
   }
 
   // Observación obligatoria (siempre)

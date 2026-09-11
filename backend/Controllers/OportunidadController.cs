@@ -403,6 +403,8 @@ public class OportunidadController : ControllerBase
             [50018] = (StatusCodes.Status400BadRequest, ""),   // la fase exige Valor Mensual > 0
             [50019] = (StatusCodes.Status400BadRequest, "No se puede registrar un Costo si el Valor Mensual es 0."),
             [50020] = (StatusCodes.Status400BadRequest, "Debe informar el Id de la oportunidad o su N° de cotización."),
+            [50021] = (StatusCodes.Status400BadRequest, "Esta fase exige el N° de cotización."),
+            [50022] = (StatusCodes.Status400BadRequest, "Para registrar un cliente nuevo se requiere el Sector Económico."),
             [50030] = (StatusCodes.Status409Conflict, "El NIT ingresado ya pertenece a otro cliente registrado."),
             [50050] = (StatusCodes.Status409Conflict, "No se puede retroceder de fase. Solo se permite avanzar o corregir la fase vigente."),
             [50060] = (StatusCodes.Status409Conflict, "La oportunidad no tiene movimientos vigentes que revertir."),

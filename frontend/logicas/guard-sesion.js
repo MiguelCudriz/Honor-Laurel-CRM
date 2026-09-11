@@ -30,6 +30,7 @@
     'actualizar-oportunidad.html': ['ADMIN', 'SUPERVISOR', 'CONSULTOR'],
     'pipeline.html':               ['ADMIN', 'SUPERVISOR'],
     'admin-metas.html':            ['ADMIN'],
+    'admin-catalogos.html':        ['ADMIN', 'SUPERVISOR'],
     'admin-consultores.html':      ['ADMIN']
   };
 

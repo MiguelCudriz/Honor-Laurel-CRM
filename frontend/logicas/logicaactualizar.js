@@ -152,6 +152,12 @@ function faseExigeDatos() {
   return !!(f && (f.requiereDatosComerciales ?? f.RequiereDatosComerciales));
 }
 
+// [v9] Fases que exigen N° de cotización (FaseVenta.RequiereCotizacion).
+function faseExigeCotizacion() {
+  const f = faseSeleccionadaObj();
+  return !!(f && (f.requiereCotizacion ?? f.RequiereCotizacion));
+}
+
 function fasePermiteDesdeCualquiera(f) {
   return !!(f && (f.permiteDesdeCualquierFase ?? f.PermiteDesdeCualquierFase));
 }
@@ -181,6 +187,16 @@ function onFaseActualizarSeleccionada() {
     sub.textContent = exige
       ? `${fase.descripcion} exige la información comercial completa: valores, contrato y vigencia quedan abiertos y son obligatorios. El resto es opcional.`
       : 'Abre solo las tarjetas que vayas a modificar. Los campos ya traen la información actual: lo que no toques se queda como está.';
+  }
+
+  // [v9] El N° de cotización se vuelve obligatorio si la fase lo exige y la
+  //      oportunidad todavía no lo tiene.
+  const exigeCot = faseExigeCotizacion();
+  const hintCot  = document.getElementById('upHintCotizacion');
+  if (hintCot) {
+    hintCot.innerHTML = exigeCot && !cotizacionActiva
+      ? '<i class="bi bi-exclamation-circle me-1"></i>Obligatorio en esta fase'
+      : '<i class="bi bi-info-circle me-1"></i>Deja vacío para no modificar el número actual';
   }
 
   document.querySelectorAll('[data-acordeon]').forEach(card => {
@@ -1240,6 +1256,20 @@ async function actualizarFase() {
       return;
     }
     document.getElementById('upFechaInicioServicio').classList.remove('error');
+  }
+
+  // [v9] N° de cotización: obligatorio si la fase lo exige. Se valida sobre el
+  //      valor EFECTIVO: si la oportunidad ya lo tenía, no hay que reescribirlo.
+  if (faseExigeCotizacion()) {
+    const elCot = document.getElementById('upNumeroCotizacion');
+    const cotEfectiva = (elCot.value.trim() || cotizacionActiva || '').trim();
+    if (!cotEfectiva) {
+      elCot.classList.add('error');
+      abrirAcordeon(elCot.closest('[data-acordeon]'), true);
+      toast('Esta fase exige el N° de cotización.', 'err');
+      return;
+    }
+    elCot.classList.remove('error');
   }
 
   // [v10] NIT: solo dígitos, máximo 9 (misma regla que en Nueva Oportunidad).

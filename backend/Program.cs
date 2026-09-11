@@ -14,6 +14,7 @@ builder.Services.AddScoped<AuthService>();       // autenticación contra BD
 builder.Services.AddScoped<ConsultorService>();  // gestión de consultores (admin)
 builder.Services.AddScoped<PipelineService>(); //Servicios de indicadores
 builder.Services.AddScoped<MetaService>();       // gestión de metas comerciales
+builder.Services.AddScoped<CatalogoAdminService>(); // CRUD de catálogos (admin/supervisor)
 
 // Controladores + validación de modelos automática
 builder.Services.AddControllers()

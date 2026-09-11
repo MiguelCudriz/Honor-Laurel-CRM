@@ -38,6 +38,7 @@
     <a class="sidebar-item" href="admin-metas.html">
     <span class="icon"><i class="bi bi-bullseye"></i></span>Metas Comerciales
     </a>
+    <a class="sidebar-item" href="admin-catalogos.html"><span class="icon"><i class="bi bi-collection"></i></span>Catálogos</a>
     <span class="sidebar-label" id="sidebarPipelineLabel" style="display:none">Indicadores BI</span>
     <a class="sidebar-item" id="sidebarPipelineItem" href="#" onclick="verPipeline()" style="display:none"><span class="icon"><i class="bi bi-bar-chart-line"></i></span>Ver Indicadores</a>
     <div class="sidebar-divider" id="sidebarAdminDivider" style="display:none"></div>
@@ -147,9 +148,13 @@
             </div>
             <button class="btn-cambiar-cliente" onclick="limpiarBusquedaActual()"><i class="bi bi-pencil me-1"></i>Cambiar</button>
           </div>
-          <div class="form-grid" style="margin-top:16px">
+          <!-- [v9] El sector económico ya no se pide para clientes ACTUAL /
+               PROFUNDIZACIÓN: el cliente ya existe y su sector está en la base.
+               El select queda oculto para no romper las funciones que lo
+               referencian, pero su valor ya no se envía. -->
+          <div class="form-grid campo-oculto">
             <div class="field">
-              <label><i class="bi bi-diagram-3"></i> Sector Económico <span class="req">✦</span></label>
+              <label>Sector Económico</label>
               <select id="sectorActual" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
           </div>
@@ -175,9 +180,13 @@
             </div>
             <button class="btn-cambiar-cliente" onclick="limpiarBusquedaProf()"><i class="bi bi-pencil me-1"></i>Cambiar</button>
           </div>
-          <div class="form-grid" style="margin-top:16px">
+          <!-- [v9] El sector económico ya no se pide para clientes ACTUAL /
+               PROFUNDIZACIÓN: el cliente ya existe y su sector está en la base.
+               El select queda oculto para no romper las funciones que lo
+               referencian, pero su valor ya no se envía. -->
+          <div class="form-grid campo-oculto">
             <div class="field">
-              <label><i class="bi bi-diagram-3"></i> Sector Económico <span class="req">✦</span></label>
+              <label>Sector Económico</label>
               <select id="sectorProfundizacion" autocomplete="off"><option value="">— Seleccionar —</option></select>
             </div>
           </div>

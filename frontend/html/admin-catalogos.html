@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HONOR — Administrador · Catálogos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;600;700&family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="16x16" href="/frontend/img/favicons/favicon-16x16.png">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="/frontend/estilos/estilosadmin.css">
+  <link rel="stylesheet" href="/frontend/estilos/comun.css">
+  <link rel="stylesheet" href="/frontend/estilos/estilosCatalogos.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <img src="/frontend/img/logo.png" alt="Honor Servicios de Seguridad">
+  <div class="navbar-right">
+    <div class="nav-links">
+      <a class="nav-link" href="nueva-oportunidad.html"><i class="bi bi-plus-circle me-1"></i>Nueva Oportunidad</a>
+      <a class="nav-link" href="actualizar-oportunidad.html"><i class="bi bi-search me-1"></i>Actualizar / Consultar</a>
+      <a class="nav-link" href="pipeline.html"><i class="bi bi-bar-chart-line me-1"></i>Indicadores</a>
+      <a class="nav-link active" href="admin-consultores.html"><i class="bi bi-gear me-1"></i>Admin</a>
+    </div>
+    <div class="nav-user">
+      <i class="bi bi-person-circle"></i>
+      <span id="navUsuario">—</span>
+      <span class="nav-badge" id="navRolBadge">—</span>
+    </div>
+    <button class="btn-logout" onclick="logout()"><i class="bi bi-box-arrow-right me-1"></i>Salir</button>
+  </div>
+</nav>
+
+<div class="main-layout">
+  <aside class="sidebar">
+    <span class="sidebar-label">Oportunidades</span>
+    <a class="sidebar-item" href="nueva-oportunidad.html"><span class="icon"><i class="bi bi-file-earmark-plus"></i></span>Nueva Oportunidad</a>
+    <a class="sidebar-item" href="actualizar-oportunidad.html"><span class="icon"><i class="bi bi-arrow-repeat"></i></span>Consultar / Actualizar</a>
+    <div class="sidebar-divider"></div>
+    <span class="sidebar-label">Administración</span>
+    <a class="sidebar-item" href="admin-consultores.html"><span class="icon"><i class="bi bi-people-fill"></i></span>Gestión Consultores</a>
+    <a class="sidebar-item" href="admin-metas.html"><span class="icon"><i class="bi bi-bullseye"></i></span>Metas Comerciales</a>
+    <a class="sidebar-item active" href="admin-catalogos.html"><span class="icon"><i class="bi bi-collection"></i></span>Catálogos</a>
+    <div class="sidebar-divider"></div>
+    <span class="sidebar-label">Indicadores BI</span>
+    <a class="sidebar-item" href="pipeline.html"><span class="icon"><i class="bi bi-bar-chart-line"></i></span>Ver Indicadores</a>
+  </aside>
+
+  <main class="content">
+    <div class="page-header">
+      <div>
+        <h1><i class="bi bi-collection me-2" style="color:var(--verde)"></i>Catálogos del Sistema</h1>
+        <p>Crea, edita y da de baja los valores que alimentan los formularios de oportunidades.</p>
+      </div>
+    </div>
+
+    <!-- ══════════ SELECTOR DE CATÁLOGO ══════════
+         Las tarjetas se generan solas con los metadatos que devuelve la API.
+         Para habilitar un catálogo nuevo no hay que tocar este HTML. -->
+    <div class="cat-selector" id="catSelector">
+      <div class="cat-cargando"><span class="spinner"></span> Cargando catálogos...</div>
+    </div>
+
+    <!-- ══════════ TABLA DEL CATÁLOGO ACTIVO ══════════ -->
+    <div class="card" id="cardCatalogo" style="display:none">
+      <div class="card-header">
+        <div class="header-icon" style="background-color:aliceblue;opacity:0.8;"><i class="bi bi-table" id="catIcono"></i></div>
+        <h3 id="catTitulo">—</h3>
+        <span class="cat-badge" id="catConteo">0</span>
+      </div>
+
+      <div class="card-body">
+        <div class="cat-toolbar">
+          <div class="cat-buscador">
+            <i class="bi bi-search"></i>
+            <input type="text" id="catFiltro" placeholder="Buscar en este catálogo..."
+                   oninput="filtrarLocal()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <label class="cat-check">
+            <input type="checkbox" id="catSoloActivos" onchange="filtrarLocal()" autocomplete="off">
+            Solo activos
+          </label>
+          <button class="btn btn-primary" onclick="abrirFormulario()">
+            <i class="bi bi-plus-lg"></i> Nuevo
+          </button>
+        </div>
+
+        <div class="cat-tabla-wrap">
+          <table class="cat-tabla">
+            <thead id="catThead"></thead>
+            <tbody id="catTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/frontend/logicas/guard-sesion.js"></script>
+<script src="/frontend/logicas/logicaCatalogos.js"></script>
+</body>
+</html>
