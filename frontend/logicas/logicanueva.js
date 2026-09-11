@@ -93,21 +93,48 @@ function fasePermiteValorCero() {
 }
 
 /** Devuelve 'contacto' | 'cotizacion' | 'libre' | null (sin fase elegida aún) */
+/**
+ * Grupo de comportamiento de la fase elegida: 'contacto' | 'cotizacion' | 'libre'.
+ *
+ * [v12] Esta función decide si el formulario se despliega, así que no puede
+ * fallar nunca. La versión anterior consultaba un catálogo que no estaba
+ * declarado en este archivo y lanzaba ReferenceError: las fases de contacto
+ * funcionaban porque retornaban antes de llegar a esa línea, y todas las demás
+ * abortaban dejando el paso 4 sin abrir.
+ *
+ * Ahora la lectura del catálogo va aislada: si algo falla, se cae a las listas
+ * locales y el formulario se abre igual.
+ */
 function obtenerGrupoFase() {
-  const sel  = document.getElementById('idFaseVenta');
+  const sel = document.getElementById('idFaseVenta');
+  if (!sel) return null;
+
   const desc = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
   if (!desc) return null;
-  if (FASES_CONTACTO.some(f => desc === normalizarTexto(f))) return 'contacto';
-  // [v9] La exigencia del N° de cotización sale del catálogo
-  // (FaseVenta.RequiereCotizacion), que es lo que también valida el SP.
-  // La lista FASES_COTIZACION_OBLIGATORIA queda solo como respaldo por si el
-  // catálogo aún no trae la columna.
-  const fase = catalogoFases.find(f => f.id === (parseInt(sel.value) || 0));
-  if (fase && (fase.requiereCotizacion ?? fase.RequiereCotizacion) !== undefined)
-    return (fase.requiereCotizacion ?? fase.RequiereCotizacion) ? 'cotizacion' : 'libre';
 
+  if (FASES_CONTACTO.some(f => desc === normalizarTexto(f))) return 'contacto';
+
+  // Fuente preferida: la bandera del catálogo (FaseVenta.RequiereCotizacion),
+  // que es la misma regla que valida el procedimiento almacenado.
+  const grupoCatalogo = grupoSegunCatalogo(parseInt(sel.value) || 0);
+  if (grupoCatalogo) return grupoCatalogo;
+
+  // Respaldo: listas locales, por si el catálogo aún no trae la columna.
   if (FASES_COTIZACION_OBLIGATORIA.some(f => desc === normalizarTexto(f))) return 'cotizacion';
   return 'libre';
+}
+
+// Devuelve 'cotizacion' | 'libre', o null si el catálogo no puede responder.
+function grupoSegunCatalogo(idFase) {
+  if (!Array.isArray(catalogoFases) || !idFase) return null;
+
+  const fase = catalogoFases.find(f => f.id === idFase);
+  if (!fase) return null;
+
+  const req = fase.requiereCotizacion ?? fase.RequiereCotizacion;
+  if (req === undefined || req === null) return null;
+
+  return req ? 'cotizacion' : 'libre';
 }
 
 // ── INDICADOR DE PASOS (wizard) ───────────────────────────────────
@@ -235,8 +262,19 @@ function volverACliente() {
 
 // ── PASO 3 → PASO 4: FASE SELECCIONADA (auto-despliega el resto) ─
 function onFaseSeleccionada() {
-  const grupo = obtenerGrupoFase();
   const resto = document.getElementById('restoFormulario');
+
+  // [v12] El grupo se resuelve dentro de un try: si el catálogo llegara
+  // incompleto o con una forma inesperada, el formulario debe abrirse igual
+  // en modo 'libre'. Antes un error aquí dejaba al usuario bloqueado en el
+  // paso 3 sin ningún mensaje.
+  let grupo;
+  try {
+    grupo = obtenerGrupoFase();
+  } catch (e) {
+    console.error('No se pudo resolver el grupo de la fase:', e);
+    grupo = 'libre';
+  }
 
   if (!grupo) { resto.style.display = 'none'; return; }
 
@@ -264,9 +302,18 @@ function onFaseSeleccionada() {
   document.getElementById('badgeFaseElegida').textContent =
     selFase.options[selFase.selectedIndex]?.text || 'FASE';
 
+  // Primero se abre el paso 4 y se marca el avance; los ajustes visuales van
+  // después y aislados, para que un fallo accesorio no vuelva a dejar al
+  // usuario sin formulario.
   resto.style.display = 'block';
-  ajustarSecciones();
   marcarPaso(4);
+
+  try {
+    ajustarSecciones();
+  } catch (e) {
+    console.error('No se pudieron ajustar los bloques del formulario:', e);
+  }
+
   setTimeout(() => resto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 }
 
@@ -419,6 +466,12 @@ function toast(msg, tipo = 'ok') {
 //      CRM.ModalidadContrato.MaxMeses). El límite YA NO está escrito en el JS.
 let catalogoModalidades = [];
 
+// [v12] Catálogo de fases con sus banderas de negocio (RequiereCotizacion,
+//       RequiereDatosComerciales). Faltaba declararlo: obtenerGrupoFase() lo
+//       usaba y lanzaba ReferenceError, lo que dejaba el formulario sin abrir
+//       en toda fase que no fuera de contacto.
+let catalogoFases = [];
+
 // Tope de meses de la modalidad seleccionada. null = sin límite.
 function maxMesesModalidad() {
   const sel = document.getElementById('idModalidad');
@@ -489,7 +542,9 @@ async function cargarCatalogos() {
     catalogoModalidades = modalidades.data || [];
     llenarSelect('idModalidad', modalidades.data, 'id', 'descripcion');
 
-    const fasesFiltradas = (fases.data || []).filter(f =>
+    catalogoFases = fases.data || [];
+
+    const fasesFiltradas = catalogoFases.filter(f =>
       !FASES_EXCLUIDAS.includes(normalizarTexto(f.descripcion))
     );
     llenarSelect('idFaseVenta', fasesFiltradas, 'id', 'descripcion');

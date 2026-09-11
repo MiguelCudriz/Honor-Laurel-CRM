@@ -115,17 +115,17 @@
           <div class="grilla-paginacion" id="grillaPaginacion" style="display:none">
             <div class="pag-info" id="pagInfo">—</div>
             <div class="pag-controles">
-              <button class="pag-btn" id="pagPrimera" onclick="irAPagina(1)" title="Primera página">
+              <button class="pag-btn" id="pagPrimera" onclick="irAPagina('primera')" title="Primera página">
                 <i class="bi bi-chevron-double-left"></i>
               </button>
-              <button class="pag-btn" id="pagAnterior" onclick="irAPagina(estadoGrilla.pagina - 1)" title="Anterior">
+              <button class="pag-btn" id="pagAnterior" onclick="irAPagina('anterior')" title="Anterior">
                 <i class="bi bi-chevron-left"></i>
               </button>
               <span class="pag-actual" id="pagActual">1 / 1</span>
-              <button class="pag-btn" id="pagSiguiente" onclick="irAPagina(estadoGrilla.pagina + 1)" title="Siguiente">
+              <button class="pag-btn" id="pagSiguiente" onclick="irAPagina('siguiente')" title="Siguiente">
                 <i class="bi bi-chevron-right"></i>
               </button>
-              <button class="pag-btn" id="pagUltima" onclick="irAPagina(estadoGrilla.totalPaginas)" title="Última página">
+              <button class="pag-btn" id="pagUltima" onclick="irAPagina('ultima')" title="Última página">
                 <i class="bi bi-chevron-double-right"></i>
               </button>
             </div>

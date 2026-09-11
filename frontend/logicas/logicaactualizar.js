@@ -547,9 +547,35 @@ function aplicarFiltros() {
   cargarGrilla();
 }
 
-function irAPagina(n) {
-  const destino = Math.min(Math.max(1, n), Math.max(1, estadoGrilla.totalPaginas));
+/**
+ * Navega la grilla. Acepta un número de página o una intención:
+ * 'primera' | 'anterior' | 'siguiente' | 'ultima'.
+ *
+ * [v12] El HTML pasa intenciones en lugar de leer estadoGrilla. Los
+ * manejadores en línea se evalúan en el ámbito global, así que alcanzar
+ * una variable interna del módulo funcionaba, pero acoplaba la plantilla
+ * al estado del JS: renombrar una propiedad rompía los botones sin que
+ * nada lo advirtiera.
+ */
+function irAPagina(destinoPedido) {
+  const total = Math.max(1, estadoGrilla.totalPaginas);
+
+  const mapa = {
+    primera:   1,
+    anterior:  estadoGrilla.pagina - 1,
+    siguiente: estadoGrilla.pagina + 1,
+    ultima:    total
+  };
+
+  const pedido = typeof destinoPedido === 'string'
+    ? mapa[destinoPedido]
+    : parseInt(destinoPedido);
+
+  if (pedido === undefined || Number.isNaN(pedido)) return;
+
+  const destino = Math.min(Math.max(1, pedido), total);
   if (destino === estadoGrilla.pagina) return;
+
   estadoGrilla.pagina = destino;
   cargarGrilla();
   document.getElementById('cardGrilla')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
