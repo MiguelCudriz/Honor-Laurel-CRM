@@ -317,20 +317,52 @@ public class OportunidadService
     //  OPORTUNIDADES — LECTURA
     // ─────────────────────────────────────────────────────────────────────────
 
-    public async Task<IEnumerable<OportunidadVigenteDto>> GetOportunidadesActualesAsync(
+    /// <summary>
+    /// [v10] Pipeline actual PAGINADO, con búsqueda y filtros resueltos en el
+    /// servidor.
+    ///
+    /// Antes se devolvía la tabla completa y el navegador filtraba en memoria.
+    /// Con unos cientos de oportunidades funcionaba; con miles la carga se
+    /// degradaba y el síntoma habría llegado disfrazado de "la aplicación está
+    /// lenta". Ahora viaja solo la página que se está viendo.
+    ///
+    /// Las columnas se piden explícitamente (sin Observacion, que es
+    /// NVARCHAR(MAX) y la grilla no muestra).
+    /// </summary>
+    public async Task<PaginaDto<OportunidadVigenteDto>> GetOportunidadesActualesAsync(
         string? consultor  = null,
         string? fase       = null,
-        string? tipoCierre = null)
+        string? tipoCierre = null,
+        string? buscar     = null,
+        string? estado     = null,
+        int     pagina     = 1,
+        int     tamano     = 25)
     {
         using var conn = _db.CreateConnection();
 
-        // [v10] RENDIMIENTO — Antes era SELECT *, que arrastraba Observacion
-        // (NVARCHAR(MAX)) de TODAS las oportunidades en cada carga de la
-        // grilla, aunque la grilla no muestra la observación. En una base con
-        // historial eso multiplica el peso de la respuesta por varios órdenes
-        // de magnitud. Aquí se piden solo las columnas que la grilla y sus
-        // filtros usan; el detalle sigue trayendo todo al abrir una fila.
-        return await conn.QueryAsync<OportunidadVigenteDto>(@"
+        // Límites defensivos: la página y el tamaño llegan del cliente.
+        if (pagina < 1) pagina = 1;
+        tamano = Math.Clamp(tamano, 5, 200);
+
+        // Un solo WHERE compartido por el conteo y por la página, para que no
+        // puedan divergir al editar uno y olvidar el otro.
+        const string filtro = @"
+            WHERE  (@Consultor  IS NULL OR ConsultorActual = @Consultor)
+              AND  (@Fase       IS NULL OR FaseVenta       = @Fase)
+              AND  (@TipoCierre IS NULL OR TipoCierre      = @TipoCierre)
+              AND  (@Estado     IS NULL
+                    OR (@Estado = 'ACTIVA'  AND TipoCierre IS NULL)
+                    OR (@Estado = 'GANADA'  AND TipoCierre = 'GANADA')
+                    OR (@Estado = 'PERDIDA' AND TipoCierre = 'PERDIDA'))
+              AND  (@Buscar IS NULL
+                    OR NumeroCotizacion               LIKE '%' + @Buscar + '%'
+                    OR ProspectoCliente               LIKE '%' + @Buscar + '%'
+                    OR NIT                            LIKE '%' + @Buscar + '%'
+                    OR CAST(IdOportunidad AS VARCHAR(12)) LIKE '%' + @Buscar + '%')";
+
+        var sql = $@"
+            SELECT COUNT(*) FROM CRM.VW_OportunidadesActuales {filtro};
+
             SELECT IdOportunidad, NumeroCotizacion, ProspectoCliente, NIT,
                    IdTipoCliente, TipoCliente, EsLicitacion, Licitacion,
                    IdSectorEconomico, SectorEconomico,
@@ -347,12 +379,39 @@ public class OportunidadService
                    FechaInicioServicio, FechaFinServicio,
                    MesRegistro, AnioRegistro
             FROM   CRM.VW_OportunidadesActuales
-            WHERE  (@Consultor  IS NULL OR ConsultorActual = @Consultor)
-              AND  (@Fase       IS NULL OR FaseVenta       = @Fase)
-              AND  (@TipoCierre IS NULL OR TipoCierre      = @TipoCierre)
-            ORDER  BY FechaActualizacion DESC",
-            new { Consultor = consultor, Fase = fase, TipoCierre = tipoCierre });
+            {filtro}
+            -- IdOportunidad como desempate: sin un orden total, dos filas con
+            -- la misma fecha pueden repetirse o perderse entre páginas.
+            ORDER  BY FechaActualizacion DESC, IdOportunidad DESC
+            OFFSET @Skip ROWS FETCH NEXT @Tamano ROWS ONLY;";
+
+        var parametros = new
+        {
+            Consultor  = Vacio(consultor),
+            Fase       = Vacio(fase),
+            TipoCierre = Vacio(tipoCierre),
+            Estado     = Vacio(estado)?.ToUpperInvariant(),
+            Buscar     = Vacio(buscar),
+            Skip       = (pagina - 1) * tamano,
+            Tamano     = tamano
+        };
+
+        using var multi = await conn.QueryMultipleAsync(sql, parametros);
+
+        var total = await multi.ReadFirstAsync<int>();
+        var items = (await multi.ReadAsync<OportunidadVigenteDto>()).ToList();
+
+        return new PaginaDto<OportunidadVigenteDto>
+        {
+            Items        = items,
+            Total        = total,
+            Pagina       = pagina,
+            Tamano       = tamano,
+            TotalPaginas = total == 0 ? 0 : (int)Math.Ceiling(total / (double)tamano)
+        };
     }
+
+    private static string? Vacio(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
     /// <summary>
     /// [v8] Revierte el último movimiento de una oportunidad. No borra: marca
@@ -422,7 +481,11 @@ public class OportunidadService
                    EsCierre, TipoCierre, Consultor, ValorMensual, Costo,
                    AIUAbsoluto, PorcentajeAIU, MontoTotalDuracion, ValorPonderado,
                    FechaActualizacion, MesRegistro, AnioRegistro, Trimestre,
-                   EsVigente, Observacion, FechaRegistro, UsuarioRegistro
+                   EsVigente, Observacion, FechaRegistro, UsuarioRegistro,
+                   -- [G-2] Trazabilidad de la corrección de cierres: el parche v8
+                   -- ya guardaba estos datos, pero nunca salían del backend, así
+                   -- que un movimiento revertido se veía igual que uno válido.
+                   Anulado, FechaAnulacion, UsuarioAnulacion, MotivoAnulacion
             FROM   CRM.VW_HistorialOportunidades
             WHERE  NumeroCotizacion = @Num
             ORDER  BY FechaRegistro DESC",
@@ -447,7 +510,11 @@ public class OportunidadService
                    EsCierre, TipoCierre, Consultor, ValorMensual, Costo,
                    AIUAbsoluto, PorcentajeAIU, MontoTotalDuracion, ValorPonderado,
                    FechaActualizacion, MesRegistro, AnioRegistro, Trimestre,
-                   EsVigente, Observacion, FechaRegistro, UsuarioRegistro
+                   EsVigente, Observacion, FechaRegistro, UsuarioRegistro,
+                   -- [G-2] Trazabilidad de la corrección de cierres: el parche v8
+                   -- ya guardaba estos datos, pero nunca salían del backend, así
+                   -- que un movimiento revertido se veía igual que uno válido.
+                   Anulado, FechaAnulacion, UsuarioAnulacion, MotivoAnulacion
             FROM   CRM.VW_HistorialOportunidades
             WHERE  IdOportunidad = @Id
             ORDER  BY FechaRegistro DESC",

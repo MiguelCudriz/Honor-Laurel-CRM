@@ -250,6 +250,20 @@ public class AnularMovimientoResponse
     public string  Mensaje        { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// [v10] Resultado paginado. La grilla dejó de descargar la tabla completa:
+/// pide una página y el total, así que el navegador nunca tiene más filas de
+/// las que está mostrando.
+/// </summary>
+public class PaginaDto<T>
+{
+    public IEnumerable<T> Items        { get; set; } = Array.Empty<T>();
+    public int            Total        { get; set; }
+    public int            Pagina       { get; set; }
+    public int            Tamano       { get; set; }
+    public int            TotalPaginas { get; set; }
+}
+
 public class CatalogoItem
 {
     public int    Id          { get; set; }

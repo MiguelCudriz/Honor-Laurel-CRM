@@ -114,13 +114,22 @@ public class OportunidadController : ControllerBase
     //  OPORTUNIDADES — LECTURA
     // ─────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// [v10] Pipeline actual paginado. Devuelve { items, total, pagina,
+    /// tamano, totalPaginas }: la grilla ya no descarga la tabla completa.
+    /// </summary>
     [HttpGet("oportunidades")]
     public async Task<IActionResult> GetOportunidades(
         [FromQuery] string? consultor,
         [FromQuery] string? fase,
-        [FromQuery] string? tipoCierre)
+        [FromQuery] string? tipoCierre,
+        [FromQuery] string? buscar,
+        [FromQuery] string? estado,
+        [FromQuery] int     pagina = 1,
+        [FromQuery] int     tamano = 25)
     {
-        var data = await _svc.GetOportunidadesActualesAsync(consultor, fase, tipoCierre);
+        var data = await _svc.GetOportunidadesActualesAsync(
+            consultor, fase, tipoCierre, buscar, estado, pagina, tamano);
         return Ok(ApiResponse<object>.Ok(data));
     }
 

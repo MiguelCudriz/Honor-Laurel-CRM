@@ -15,7 +15,19 @@ let ordenFaseActiva        = 0;   // OrdenFunnel de la fase vigente
 let idFaseActiva           = 0;   // IdFaseVenta vigente
 let catalogoConsultores   = [];
 let catalogoModalidades   = [];
-let todasLasOportunidades = [];   // dataset completo para filtrar en grilla
+// [M-1] La grilla ya no guarda el dataset completo: solo la página visible.
+// El filtrado y la paginación se resuelven en el servidor.
+let paginaActual = [];            // filas de la página que se está viendo
+
+const estadoGrilla = {
+  buscar:       '',
+  fase:         '',
+  estado:       '',
+  pagina:       1,
+  tamano:       25,
+  total:        0,
+  totalPaginas: 0
+};
 let todosLosServicios     = [];   // para el selector de servicio en actualizar
 let todosLosMunicipios    = [];   // para el filtro de municipio en actualizar
 
@@ -466,45 +478,108 @@ async function cargarGrilla() {
 
   // Actualizar título según rol
   const titulo = document.getElementById('tituloGrilla');
-  if (verTodos) {
-    titulo.textContent = 'Todas las Oportunidades';
-  } else {
-    titulo.textContent = `Mis Oportunidades — ${usuario}`;
-  }
+  titulo.textContent = verTodos ? 'Todas las Oportunidades' : `Mis Oportunidades — ${usuario}`;
 
   try {
-    // [v10] RENDIMIENTO Y PRIVACIDAD — El filtro por consultor se hace ahora en
-    // el servidor. Antes el navegador descargaba TODAS las oportunidades de la
-    // empresa y descartaba las ajenas en JavaScript: transferencia inútil y,
-    // de paso, datos de otros consultores viajando al equipo de cada usuario.
-    const url = verTodos
-      ? `${API}/oportunidades`
-      : `${API}/oportunidades?consultor=${encodeURIComponent(usuario)}`;
+    // [M-1] Búsqueda, filtros y paginación viajan al servidor. Antes se
+    // descargaba la tabla completa y se filtraba en JavaScript: con miles de
+    // oportunidades eso se degrada y aparece como "la aplicación está lenta".
+    //
+    // [v10] El consultor también se filtra en el servidor: un consultor no
+    // debe recibir el pipeline de sus compañeros ni para descartarlo después.
+    const p = new URLSearchParams({
+      pagina: estadoGrilla.pagina,
+      tamano: estadoGrilla.tamano
+    });
+    if (!verTodos)            p.set('consultor', usuario);
+    if (estadoGrilla.buscar)  p.set('buscar', estadoGrilla.buscar);
+    if (estadoGrilla.fase)    p.set('fase', estadoGrilla.fase);
+    if (estadoGrilla.estado)  p.set('estado', estadoGrilla.estado);
 
-    // [v11] Carga tolerante a fallos. Antes se hacía `res.data || []`: si la
-    // API devolvía un error o la petición se colgaba, la grilla se pintaba
-    // VACÍA sin avisar y parecía que no había oportunidades. Ahora un fallo
-    // se distingue de "no hay datos" y se puede reintentar.
-    const res = await fetchConReintento(url);
-    let opps  = res.data || [];
+    // [v11] Carga tolerante a fallos: un error o un timeout no se puede
+    // confundir con "no hay resultados".
+    const res  = await fetchConReintento(`${API}/oportunidades?${p}`);
+    const data = res.data || {};
 
-    // Red de seguridad: si el nombre de sesión no coincidiera exactamente con
-    // ConsultorActual, se vuelve a filtrar aquí para no mostrar de más.
-    if (!verTodos) {
-      opps = opps.filter(o => {
-        const consultor = normalizarTexto(
-          resolveField(o, 'consultorActual', 'consultor', 'nombreConsultor') || ''
-        );
-        return consultor === normalizarTexto(usuario);
-      });
+    paginaActual              = data.items        || [];
+    estadoGrilla.total        = data.total        || 0;
+    estadoGrilla.totalPaginas = data.totalPaginas || 0;
+
+    // Si se borraron filas y la página actual quedó fuera de rango, se
+    // retrocede en vez de mostrar una tabla vacía sin explicación.
+    if (estadoGrilla.pagina > estadoGrilla.totalPaginas && estadoGrilla.totalPaginas > 0) {
+      estadoGrilla.pagina = estadoGrilla.totalPaginas;
+      return cargarGrilla();
     }
 
-    todasLasOportunidades = opps;
-    renderGrilla(todasLasOportunidades);
+    renderGrilla(paginaActual);
+    renderPaginacion();
 
   } catch (e) {
     mostrarErrorGrilla(e.message || 'No se pudo conectar con el servidor.');
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   [M-1] FILTROS Y PAGINACIÓN
+   ──────────────────────────────────────────────────────────────────
+   Cualquier cambio de filtro vuelve a la página 1: quedarse en la
+   página 7 de un resultado que ahora tiene 2 páginas es el bug
+   clásico de las grillas paginadas.
+══════════════════════════════════════════════════════════════════ */
+
+let relojBusqueda = null;
+
+// La búsqueda se manda 350 ms después de la última tecla, no en cada una.
+function buscarGrillaDebounce() {
+  const input = document.getElementById('inputBusqueda');
+  document.getElementById('btnLimpiarBusqueda').style.display = input.value ? 'flex' : 'none';
+
+  clearTimeout(relojBusqueda);
+  relojBusqueda = setTimeout(aplicarFiltros, 350);
+}
+
+function aplicarFiltros() {
+  estadoGrilla.buscar = document.getElementById('inputBusqueda').value.trim();
+  estadoGrilla.fase   = document.getElementById('filtroFase').value;
+  estadoGrilla.estado = document.getElementById('filtroEstado').value;
+  estadoGrilla.pagina = 1;
+  cargarGrilla();
+}
+
+function irAPagina(n) {
+  const destino = Math.min(Math.max(1, n), Math.max(1, estadoGrilla.totalPaginas));
+  if (destino === estadoGrilla.pagina) return;
+  estadoGrilla.pagina = destino;
+  cargarGrilla();
+  document.getElementById('cardGrilla')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cambiarTamano() {
+  estadoGrilla.tamano = parseInt(document.getElementById('pagTamano').value) || 25;
+  estadoGrilla.pagina = 1;
+  cargarGrilla();
+}
+
+function renderPaginacion() {
+  const cont = document.getElementById('grillaPaginacion');
+  if (!cont) return;
+
+  const { pagina, tamano, total, totalPaginas } = estadoGrilla;
+
+  if (total === 0) { cont.style.display = 'none'; return; }
+  cont.style.display = 'flex';
+
+  const desde = (pagina - 1) * tamano + 1;
+  const hasta = Math.min(pagina * tamano, total);
+
+  document.getElementById('pagInfo').textContent   = `Mostrando ${desde}–${hasta} de ${total}`;
+  document.getElementById('pagActual').textContent = `${pagina} / ${totalPaginas}`;
+
+  document.getElementById('pagPrimera').disabled   = pagina <= 1;
+  document.getElementById('pagAnterior').disabled  = pagina <= 1;
+  document.getElementById('pagSiguiente').disabled = pagina >= totalPaginas;
+  document.getElementById('pagUltima').disabled    = pagina >= totalPaginas;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -581,7 +656,9 @@ function renderGrilla(opps) {
   document.getElementById('grillaLoading').style.display = 'none';
   document.getElementById('grillaWrap').style.display    = 'block';
 
-  document.getElementById('grillaBadge').textContent = `${opps.length} oportunidad${opps.length !== 1 ? 'es' : ''}`;
+  // El badge muestra el TOTAL del servidor, no el de la página visible.
+  const tot = estadoGrilla.total;
+  document.getElementById('grillaBadge').textContent = `${tot} oportunidad${tot !== 1 ? 'es' : ''}`;
 
   const tbody    = document.getElementById('grillaBody');
   const noData   = document.getElementById('grillaVacia');
@@ -589,6 +666,7 @@ function renderGrilla(opps) {
   if (!opps.length) {
     tbody.innerHTML = '';
     noData.style.display = 'flex';
+    renderPaginacion();
     return;
   }
   noData.style.display = 'none';
@@ -629,44 +707,18 @@ function renderGrilla(opps) {
 }
 
 // ── FILTRAR GRILLA ────────────────────────────────────────────────
+// [M-1] filtrarGrilla() ya no filtra en memoria: los filtros se resuelven en
+// el servidor. Se conserva el nombre porque otras partes del archivo lo llaman
+// tras guardar un movimiento, y ahora simplemente recarga la página vigente.
 function filtrarGrilla() {
-  const q       = normalizarTexto(document.getElementById('inputBusqueda').value);
-  const fase    = document.getElementById('filtroFase').value;
-  const estado  = document.getElementById('filtroEstado').value;
-  const btnX    = document.getElementById('btnLimpiarBusqueda');
-
-  btnX.style.display = q ? 'flex' : 'none';
-
-  const filtradas = todasLasOportunidades.filter(o => {
-    // Texto libre (cotización, cliente, NIT)
-    if (q) {
-      const cot     = normalizarTexto(o.numeroCotizacion || String(o.idOportunidad || ''));
-      const cliente = normalizarTexto(o.prospectoCliente || o.razonSocial || '');
-      const nit     = normalizarTexto(o.nit || '');
-      if (!cot.includes(q) && !cliente.includes(q) && !nit.includes(q)) return false;
-    }
-    // Filtro fase
-    if (fase) {
-      const faseoOp = normalizarTexto(resolveField(o, 'faseVenta', 'fase', 'descripcionFase') || '');
-      if (faseoOp !== fase) return false;
-    }
-    // Filtro estado
-    if (estado) {
-      const tipo = (o.tipoCierre || '').toLowerCase();
-      if (estado === 'ganada'  && tipo !== 'ganada')  return false;
-      if (estado === 'perdida' && tipo !== 'perdida') return false;
-      if (estado === 'activa'  && (tipo === 'ganada' || tipo === 'perdida')) return false;
-    }
-    return true;
-  });
-
-  renderGrilla(filtradas);
+  aplicarFiltros();
 }
 
 function limpiarBusqueda() {
   document.getElementById('inputBusqueda').value = '';
   document.getElementById('btnLimpiarBusqueda').style.display = 'none';
-  filtrarGrilla();
+  clearTimeout(relojBusqueda);
+  aplicarFiltros();
 }
 
 // ── SELECCIONAR OPORTUNIDAD DE LA GRILLA ─────────────────────────
@@ -808,12 +860,6 @@ function mostrarDetalle(data) {
       </div>
     </div>`;
 
-  const panelEdit = document.getElementById('cardEditCotizacion');
-  if (panelEdit) {
-    panelEdit.style.display = 'none';
-    document.getElementById('editNumeroCotizacion').value = cab.numeroCotizacion || '';
-  }
-
   const pct = parseFloat(cab.probabilidadVenta || 0) * 100;
   document.getElementById('funnelFill').style.width   = pct + '%';
   document.getElementById('funnelLabel').textContent  = `${pct}% — ${cab.faseVenta}`;
@@ -838,16 +884,38 @@ function mostrarDetalle(data) {
         ? (mAiuAbs / mVm * 100)
         : parseFloat(resolveHistField(m, 'porcentajeAIU', 'PorcentajeAIU', 'porcentajeAiu') || 0);
       const prob     = parseFloat(resolveHistField(m, 'porcentajeProbabilidad', 'PorcentajeProbabilidad') || 0);
+
+      // [G-2] Movimientos revertidos. El parche v8 guardaba la traza completa
+      // pero el historial no la mostraba: un movimiento anulado se veía igual
+      // que uno válido y no había forma de auditar la corrección.
+      const anulado    = !!resolveHistField(m, 'anulado', 'Anulado');
+      const anuladoPor = resolveHistField(m, 'usuarioAnulacion', 'UsuarioAnulacion') || '—';
+      const anuladoEl  = resolveHistField(m, 'fechaAnulacion',   'FechaAnulacion');
+      const motivo     = resolveHistField(m, 'motivoAnulacion',  'MotivoAnulacion') || '';
+
+      const avisoAnulado = anulado ? `
+        <div class="tc-anulado">
+          <div class="tc-anulado-titulo">
+            <i class="bi bi-x-octagon-fill"></i> Movimiento anulado
+          </div>
+          <div class="tc-anulado-detalle">
+            Revertido por <strong>${anuladoPor}</strong>${anuladoEl ? ` · ${fmtFecha(anuladoEl)}` : ''}
+          </div>
+          ${motivo ? `<div class="tc-anulado-motivo">Motivo: ${motivo}</div>` : ''}
+        </div>` : '';
+
       return `
-      <div class="timeline-item ${vigente ? 'vigente' : ''}">
-        <div class="timeline-card ${vigente ? 'vigente' : ''}">
+      <div class="timeline-item ${anulado ? 'anulado' : (vigente ? 'vigente' : '')}">
+        <div class="timeline-card ${anulado ? 'anulado' : (vigente ? 'vigente' : '')}">
           <div class="tc-header">
             <span class="tc-fase">${fase}</span>
             <div style="display:flex;align-items:center;gap:8px">
-              ${vigente ? '<span class="vigente-tag">VIGENTE</span>' : ''}
+              ${anulado ? '<span class="anulado-tag">ANULADO</span>'
+                        : (vigente ? '<span class="vigente-tag">VIGENTE</span>' : '')}
               <span class="tc-fecha">${fmtFecha(fecha)} — ${consultor}</span>
             </div>
           </div>
+          ${avisoAnulado}
           <div class="tc-meta">
             <div class="tc-kv"><span class="k">Valor Mensual</span><span class="v">${formatCOP(mVm)}</span></div>
             <div class="tc-kv"><span class="k">Costo</span><span class="v">${formatCOP(mCosto)}</span></div>
@@ -1423,37 +1491,12 @@ function limpiarFormActualizar() {
   calcularAIU2();
 }
 
-// ── EDITAR N° COTIZACIÓN ─────────────────────────────────────────
-function mostrarEditCotizacion() {
-  // La edición de cotización ahora está integrada en el formulario de actualización.
-  // Esta función se mantiene por compatibilidad pero ya no abre panel separado.
-}
-
-async function guardarNumeroCotizacion() {
-  if (!idOportunidadActiva) { toast('No se puede identificar la oportunidad.', 'err'); return; }
-  const nuevo = document.getElementById('editNumeroCotizacion').value.trim().toUpperCase();
-  const btn   = document.querySelector('#cardEditCotizacion .btn-primary');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Guardando...';
-  try {
-    const res = await fetch(`${API}/oportunidades/asignar-cotizacion`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idOportunidad: idOportunidadActiva, nuevoNumeroCotizacion: nuevo || null })
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      toast(`N° Cotización ${nuevo ? 'asignado: ' + nuevo : 'eliminado'} correctamente.`, 'ok');
-      document.getElementById('cotizacionValor').innerHTML = nuevo || '<em style="color:#8896B0;font-style:italic">Sin asignar</em>';
-      cotizacionActiva = nuevo || cotizacionActiva;
-      document.getElementById('cardEditCotizacion').style.display = 'none';
-      cargarGrilla();
-    } else {
-      toast(data.message || 'Error al actualizar N° Cotización.', 'err');
-    }
-  } catch (e) { toast('Error de conexión.', 'err'); }
-  finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-save"></i> Guardar'; }
-}
+// [M-4] Se eliminaron mostrarEditCotizacion() y guardarNumeroCotizacion().
+// Referenciaban #cardEditCotizacion y #editNumeroCotizacion, que no existen en
+// ningún HTML desde que la edición del N° de cotización se integró al
+// formulario de actualización. La segunda habría lanzado una excepción si algo
+// la invocaba. El endpoint /oportunidades/asignar-cotizacion sigue disponible
+// en la API para uso futuro.
 
 // ── INIT ──────────────────────────────────────────────────────────
 (async () => {

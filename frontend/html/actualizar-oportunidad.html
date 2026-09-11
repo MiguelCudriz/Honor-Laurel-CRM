@@ -69,16 +69,16 @@
             <input type="text" id="inputBusqueda"
                    class="grilla-search-input"
                    placeholder="Filtrar por cotización, cliente o NIT..."
-                   oninput="filtrarGrilla()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                   oninput="buscarGrillaDebounce()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <button class="grilla-search-clear" id="btnLimpiarBusqueda" onclick="limpiarBusqueda()" style="display:none" title="Limpiar">
               <i class="bi bi-x-circle-fill"></i>
             </button>
           </div>
           <div class="grilla-filtros">
-            <select id="filtroFase" class="grilla-select" onchange="filtrarGrilla()" autocomplete="off">
+            <select id="filtroFase" class="grilla-select" onchange="aplicarFiltros()" autocomplete="off">
               <option value="">Todas las fases</option>
             </select>
-            <select id="filtroEstado" class="grilla-select" onchange="filtrarGrilla()" autocomplete="off">
+            <select id="filtroEstado" class="grilla-select" onchange="aplicarFiltros()" autocomplete="off">
               <option value="">Todos los estados</option>
               <option value="activa">Activas</option>
               <option value="ganada">Ganadas</option>
@@ -110,6 +110,35 @@
             </thead>
             <tbody id="grillaBody"></tbody>
           </table>
+          <!-- [M-1] Paginación en servidor: el navegador solo tiene la página
+               que se está viendo. -->
+          <div class="grilla-paginacion" id="grillaPaginacion" style="display:none">
+            <div class="pag-info" id="pagInfo">—</div>
+            <div class="pag-controles">
+              <button class="pag-btn" id="pagPrimera" onclick="irAPagina(1)" title="Primera página">
+                <i class="bi bi-chevron-double-left"></i>
+              </button>
+              <button class="pag-btn" id="pagAnterior" onclick="irAPagina(estadoGrilla.pagina - 1)" title="Anterior">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              <span class="pag-actual" id="pagActual">1 / 1</span>
+              <button class="pag-btn" id="pagSiguiente" onclick="irAPagina(estadoGrilla.pagina + 1)" title="Siguiente">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+              <button class="pag-btn" id="pagUltima" onclick="irAPagina(estadoGrilla.totalPaginas)" title="Última página">
+                <i class="bi bi-chevron-double-right"></i>
+              </button>
+            </div>
+            <div class="pag-tamano">
+              <label for="pagTamano">Por página</label>
+              <select id="pagTamano" onchange="cambiarTamano()" autocomplete="off">
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+
           <div id="grillaVacia" class="grilla-vacia" style="display:none">
             <i class="bi bi-inbox" style="font-size:2rem;color:#C5CFDF"></i>
             <p>No se encontraron oportunidades con ese criterio.</p>
