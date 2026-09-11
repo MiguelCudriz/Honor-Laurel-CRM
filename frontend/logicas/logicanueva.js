@@ -93,48 +93,21 @@ function fasePermiteValorCero() {
 }
 
 /** Devuelve 'contacto' | 'cotizacion' | 'libre' | null (sin fase elegida aún) */
-/**
- * Grupo de comportamiento de la fase elegida: 'contacto' | 'cotizacion' | 'libre'.
- *
- * [v12] Esta función decide si el formulario se despliega, así que no puede
- * fallar nunca. La versión anterior consultaba un catálogo que no estaba
- * declarado en este archivo y lanzaba ReferenceError: las fases de contacto
- * funcionaban porque retornaban antes de llegar a esa línea, y todas las demás
- * abortaban dejando el paso 4 sin abrir.
- *
- * Ahora la lectura del catálogo va aislada: si algo falla, se cae a las listas
- * locales y el formulario se abre igual.
- */
 function obtenerGrupoFase() {
-  const sel = document.getElementById('idFaseVenta');
-  if (!sel) return null;
-
+  const sel  = document.getElementById('idFaseVenta');
   const desc = normalizarTexto(sel.options[sel.selectedIndex]?.text || '');
   if (!desc) return null;
-
   if (FASES_CONTACTO.some(f => desc === normalizarTexto(f))) return 'contacto';
+  // [v9] La exigencia del N° de cotización sale del catálogo
+  // (FaseVenta.RequiereCotizacion), que es lo que también valida el SP.
+  // La lista FASES_COTIZACION_OBLIGATORIA queda solo como respaldo por si el
+  // catálogo aún no trae la columna.
+  const fase = catalogoFases.find(f => f.id === (parseInt(sel.value) || 0));
+  if (fase && (fase.requiereCotizacion ?? fase.RequiereCotizacion) !== undefined)
+    return (fase.requiereCotizacion ?? fase.RequiereCotizacion) ? 'cotizacion' : 'libre';
 
-  // Fuente preferida: la bandera del catálogo (FaseVenta.RequiereCotizacion),
-  // que es la misma regla que valida el procedimiento almacenado.
-  const grupoCatalogo = grupoSegunCatalogo(parseInt(sel.value) || 0);
-  if (grupoCatalogo) return grupoCatalogo;
-
-  // Respaldo: listas locales, por si el catálogo aún no trae la columna.
   if (FASES_COTIZACION_OBLIGATORIA.some(f => desc === normalizarTexto(f))) return 'cotizacion';
   return 'libre';
-}
-
-// Devuelve 'cotizacion' | 'libre', o null si el catálogo no puede responder.
-function grupoSegunCatalogo(idFase) {
-  if (!Array.isArray(catalogoFases) || !idFase) return null;
-
-  const fase = catalogoFases.find(f => f.id === idFase);
-  if (!fase) return null;
-
-  const req = fase.requiereCotizacion ?? fase.RequiereCotizacion;
-  if (req === undefined || req === null) return null;
-
-  return req ? 'cotizacion' : 'libre';
 }
 
 // ── INDICADOR DE PASOS (wizard) ───────────────────────────────────
@@ -262,19 +235,8 @@ function volverACliente() {
 
 // ── PASO 3 → PASO 4: FASE SELECCIONADA (auto-despliega el resto) ─
 function onFaseSeleccionada() {
+  const grupo = obtenerGrupoFase();
   const resto = document.getElementById('restoFormulario');
-
-  // [v12] El grupo se resuelve dentro de un try: si el catálogo llegara
-  // incompleto o con una forma inesperada, el formulario debe abrirse igual
-  // en modo 'libre'. Antes un error aquí dejaba al usuario bloqueado en el
-  // paso 3 sin ningún mensaje.
-  let grupo;
-  try {
-    grupo = obtenerGrupoFase();
-  } catch (e) {
-    console.error('No se pudo resolver el grupo de la fase:', e);
-    grupo = 'libre';
-  }
 
   if (!grupo) { resto.style.display = 'none'; return; }
 
@@ -302,18 +264,9 @@ function onFaseSeleccionada() {
   document.getElementById('badgeFaseElegida').textContent =
     selFase.options[selFase.selectedIndex]?.text || 'FASE';
 
-  // Primero se abre el paso 4 y se marca el avance; los ajustes visuales van
-  // después y aislados, para que un fallo accesorio no vuelva a dejar al
-  // usuario sin formulario.
   resto.style.display = 'block';
+  ajustarSecciones();
   marcarPaso(4);
-
-  try {
-    ajustarSecciones();
-  } catch (e) {
-    console.error('No se pudieron ajustar los bloques del formulario:', e);
-  }
-
   setTimeout(() => resto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 }
 
@@ -466,12 +419,6 @@ function toast(msg, tipo = 'ok') {
 //      CRM.ModalidadContrato.MaxMeses). El límite YA NO está escrito en el JS.
 let catalogoModalidades = [];
 
-// [v12] Catálogo de fases con sus banderas de negocio (RequiereCotizacion,
-//       RequiereDatosComerciales). Faltaba declararlo: obtenerGrupoFase() lo
-//       usaba y lanzaba ReferenceError, lo que dejaba el formulario sin abrir
-//       en toda fase que no fuera de contacto.
-let catalogoFases = [];
-
 // Tope de meses de la modalidad seleccionada. null = sin límite.
 function maxMesesModalidad() {
   const sel = document.getElementById('idModalidad');
@@ -542,9 +489,7 @@ async function cargarCatalogos() {
     catalogoModalidades = modalidades.data || [];
     llenarSelect('idModalidad', modalidades.data, 'id', 'descripcion');
 
-    catalogoFases = fases.data || [];
-
-    const fasesFiltradas = catalogoFases.filter(f =>
+    const fasesFiltradas = (fases.data || []).filter(f =>
       !FASES_EXCLUIDAS.includes(normalizarTexto(f.descripcion))
     );
     llenarSelect('idFaseVenta', fasesFiltradas, 'id', 'descripcion');
@@ -936,7 +881,10 @@ async function guardarOportunidad() {
     idMesInicio:         mesInicioVal,
     fechaInicioServicio: esContacto ? null : (document.getElementById('fechaInicioServicio').value || null),
     fechaFinServicio:    esContacto ? null : (document.getElementById('fechaFinServicio').value    || null),
-    fecha:               document.getElementById('fecha').value,
+    // [v12] La fecha es automática y su campo está oculto. Si por cualquier
+    // motivo llegara vacío, el binding de DateTime falla con un 400 difícil de
+    // interpretar; se asegura el valor de hoy antes de enviar.
+    fecha:               fechaDeHoyISO(),
     idFaseVenta:         parseInt(document.getElementById('idFaseVenta').value),
     valorMensual:        vm,
     costo:               c,
@@ -974,7 +922,12 @@ async function guardarOportunidad() {
         limpiarFormulario();
       }
     } else {
-      toast(data.message || 'Error al guardar la oportunidad.', 'err');
+      // [v12] Se muestra el motivo que devuelve el servidor. Antes se caía al
+      // mensaje genérico y un error de validación quedaba indistinguible de
+      // un fallo de base de datos: había que leer la consola del backend para
+      // saber qué campo estaba mal.
+      toast(mensajeDeError(data, 'Error al guardar la oportunidad.'), 'err');
+      console.error('Respuesta del servidor al guardar:', data);
     }
   } catch (e) {
     toast('Error de conexión con la API.', 'err');
@@ -982,6 +935,38 @@ async function guardarOportunidad() {
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Registrar Oportunidad';
   }
+}
+
+/**
+ * Extrae un mensaje legible de cualquier forma de error que devuelva la API.
+ * Cubre las tres que existen hoy: ApiResponse.message, ValidationProblemDetails
+ * (title + errors) y ProblemDetails (detail), por si algún endpoint responde
+ * con el formato por defecto de ASP.NET.
+ */
+function mensajeDeError(data, porDefecto) {
+  if (!data) return porDefecto;
+  if (data.message) return data.message;
+
+  if (data.errors && typeof data.errors === 'object') {
+    const detalles = Object.entries(data.errors)
+      .map(([campo, msgs]) => `${campo}: ${[].concat(msgs).join(', ')}`)
+      .join(' · ');
+    if (detalles) return `Datos no válidos — ${detalles}`;
+  }
+
+  return data.title || data.detail || porDefecto;
+}
+
+// Fecha del registro: la del campo automático o, en su defecto, hoy.
+function fechaDeHoyISO() {
+  const el = document.getElementById('fecha');
+  if (el && el.value) return el.value;
+
+  const hoy = new Date();
+  const iso = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 60000)
+                .toISOString().slice(0, 10);
+  if (el) el.value = iso;
+  return iso;
 }
 
 // ── RESOLVER ID TIPO CLIENTE ──────────────────────────────────────

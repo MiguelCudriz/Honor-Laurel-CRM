@@ -16,10 +16,16 @@ public class CrearOportunidadRequest
     [Required]
     public int IdTipoCliente { get; set; }
 
-    [Required]
     /// <summary>
-    /// [v9] Opcional. Solo se usa al registrar un cliente NUEVO. Para ACTUAL y
+    /// [v9] OPCIONAL. Solo se usa al registrar un cliente NUEVO; para ACTUAL y
     /// PROFUNDIZACIÓN el cliente ya existe y su sector no se debe sobrescribir.
+    ///
+    /// [v12] Aquí había un [Required] heredado de cuando el campo era
+    /// obligatorio. Sobre un int? significa "null es inválido", así que
+    /// ASP.NET rechazaba el POST con 400 antes de llegar al controlador y la
+    /// oportunidad no se guardaba nunca. La obligatoriedad real la impone
+    /// SP_CrearOportunidad, que exige el sector solo cuando hay que crear el
+    /// cliente (error 50022).
     /// </summary>
     public int? IdSectorEconomico { get; set; }
 

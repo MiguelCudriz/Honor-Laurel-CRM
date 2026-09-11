@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using CRM.Api.Data;
+using CRM.Api.DTOs;
 using CRM.Api.Middleware;
 using CRM.Api.Services;
 
@@ -22,6 +24,34 @@ builder.Services.AddControllers()
     {
         // Retorna 400 automáticamente si el modelo no pasa validación
         opt.SuppressModelStateInvalidFilter = false;
+
+        // [v12] Los errores de validación se devuelven con la MISMA forma que
+        // el resto de la API: { success, message, data }.
+        //
+        // Por defecto ASP.NET responde un ValidationProblemDetails, que trae
+        // "title" y "errors" pero NO "message". El frontend lee data.message,
+        // así que cualquier fallo de validación llegaba como un toast genérico
+        // sin decir qué campo estaba mal. Un [Required] mal puesto costó una
+        // sesión entera de diagnóstico por eso.
+        opt.InvalidModelStateResponseFactory = ctx =>
+        {
+            var detalles = ctx.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .Select(e =>
+                {
+                    var campo = string.IsNullOrEmpty(e.Key) ? "cuerpo de la petición" : e.Key;
+                    var msg   = e.Value!.Errors.First().ErrorMessage;
+                    if (string.IsNullOrWhiteSpace(msg)) msg = "valor no válido";
+                    return $"{campo}: {msg}";
+                })
+                .ToArray();
+
+            var mensaje = detalles.Length == 0
+                ? "La petición no pasó la validación."
+                : "Datos no válidos — " + string.Join(" · ", detalles);
+
+            return new BadRequestObjectResult(ApiResponse<object>.Fail(mensaje));
+        };
     });
 
 // CORS — permite conexión desde la interfaz web (HTML/JS)
