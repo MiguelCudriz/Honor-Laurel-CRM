@@ -547,35 +547,9 @@ function aplicarFiltros() {
   cargarGrilla();
 }
 
-/**
- * Navega la grilla. Acepta un número de página o una intención:
- * 'primera' | 'anterior' | 'siguiente' | 'ultima'.
- *
- * [v12] El HTML pasa intenciones en lugar de leer estadoGrilla. Los
- * manejadores en línea se evalúan en el ámbito global, así que alcanzar
- * una variable interna del módulo funcionaba, pero acoplaba la plantilla
- * al estado del JS: renombrar una propiedad rompía los botones sin que
- * nada lo advirtiera.
- */
-function irAPagina(destinoPedido) {
-  const total = Math.max(1, estadoGrilla.totalPaginas);
-
-  const mapa = {
-    primera:   1,
-    anterior:  estadoGrilla.pagina - 1,
-    siguiente: estadoGrilla.pagina + 1,
-    ultima:    total
-  };
-
-  const pedido = typeof destinoPedido === 'string'
-    ? mapa[destinoPedido]
-    : parseInt(destinoPedido);
-
-  if (pedido === undefined || Number.isNaN(pedido)) return;
-
-  const destino = Math.min(Math.max(1, pedido), total);
+function irAPagina(n) {
+  const destino = Math.min(Math.max(1, n), Math.max(1, estadoGrilla.totalPaginas));
   if (destino === estadoGrilla.pagina) return;
-
   estadoGrilla.pagina = destino;
   cargarGrilla();
   document.getElementById('cardGrilla')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -715,7 +689,7 @@ function renderGrilla(opps) {
       : idOp ? `id:${idOp}` : null;
 
     const onClickFn = idParam ? `seleccionarOportunidad('${idParam}')` : `toast('Oportunidad sin identificador válido','err')`;
-    return `<tr class="grilla-row" onclick="${onClickFn}">
+    return `<tr class="grilla-row" data-idparam="${idParam || ''}" onclick="${onClickFn}">
       <td><span class="cot-chip">${cot}</span></td>
       <td class="cliente-cell"><span title="${cliente}">${cliente}</span></td>
       <td><span class="fase-pill ${clsFase}">${fase}</span></td>
@@ -748,24 +722,52 @@ function limpiarBusqueda() {
 }
 
 // ── SELECCIONAR OPORTUNIDAD DE LA GRILLA ─────────────────────────
+/* ══════════════════════════════════════════════════════════════════
+   [v12] APERTURA DE UNA OPORTUNIDAD
+   ──────────────────────────────────────────────────────────────────
+   Dos problemas que se veían como "la aplicación va lenta":
+
+   · No había ninguna señal de que el clic se hubiera registrado, así
+     que el usuario volvía a hacer clic y se disparaban tres o cuatro
+     peticiones idénticas para la misma oportunidad. Cada una abría su
+     conexión y competían entre sí, haciendo todo más lento todavía.
+
+   · Un fallo o un timeout no se distinguían: la fila simplemente no
+     abría nada.
+
+   Ahora hay un candado de reentrada, una fila marcada como "cargando"
+   y el mismo manejo de errores con reintento del resto del módulo.
+══════════════════════════════════════════════════════════════════ */
+
+let cargandoDetalle = null;   // idParam en curso, o null
+
 async function seleccionarOportunidad(idParam) {
+  // Candado: si ya hay una carga en vuelo, el clic se ignora.
+  if (cargandoDetalle) return;
+  cargandoDetalle = idParam;
+
+  const fila = document.querySelector(`[data-idparam="${idParam}"]`);
+  fila?.classList.add('fila-cargando');
+
   try {
-    let res;
-    if (idParam.startsWith('cot:')) {
-      const cot = decodeURIComponent(idParam.slice(4));
-      res = await fetch(`${API}/oportunidades/${encodeURIComponent(cot)}`).then(r => r.json());
-    } else {
-      // id: buscar por idOportunidad
-      const id = idParam.slice(3);
-      res = await fetch(`${API}/oportunidades/id/${id}`).then(r => r.json());
-    }
-    if (res.success && res.data) {
+    const url = idParam.startsWith('cot:')
+      ? `${API}/oportunidades/${encodeURIComponent(decodeURIComponent(idParam.slice(4)))}`
+      : `${API}/oportunidades/id/${encodeURIComponent(idParam.slice(3))}`;
+
+    const res = await fetchConReintento(url);
+
+    if (res.data) {
       mostrarDetalle(res.data);
       document.getElementById('cardGrilla').style.display = 'none';
     } else {
       toast('No se pudo cargar la oportunidad.', 'err');
     }
-  } catch (e) { toast('Error de conexión.', 'err'); }
+  } catch (e) {
+    toast(e.message || 'Error de conexión al abrir la oportunidad.', 'err');
+  } finally {
+    fila?.classList.remove('fila-cargando');
+    cargandoDetalle = null;
+  }
 }
 
 // ── VOLVER A GRILLA ───────────────────────────────────────────────

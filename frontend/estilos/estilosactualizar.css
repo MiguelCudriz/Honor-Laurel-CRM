@@ -464,3 +464,26 @@ body { font-family:'Barlow',sans-serif; background:var(--gris-suave); color:var(
   font-size: 0.82rem; color: #6B7A9A;
   font-style: italic; overflow-wrap: anywhere;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   [v12] FILA EN CARGA
+   Señal de que el clic se registró. Sin esto el usuario volvía a
+   hacer clic y se disparaban peticiones duplicadas.
+══════════════════════════════════════════════════════════════ */
+
+.grilla-row.fila-cargando {
+  position: relative;
+  pointer-events: none;
+  background: rgba(0, 75, 184, 0.06) !important;
+}
+.grilla-row.fila-cargando td { opacity: 0.55; }
+.grilla-row.fila-cargando::after {
+  content: '';
+  position: absolute; top: 50%; right: 18px;
+  width: 16px; height: 16px; margin-top: -8px;
+  border: 2px solid var(--gris-borde);
+  border-top-color: var(--azul-med);
+  border-radius: 50%;
+  animation: filaGirando 0.7s linear infinite;
+}
+@keyframes filaGirando { to { transform: rotate(360deg); } }

@@ -487,9 +487,21 @@ public class OportunidadService
                    -- que un movimiento revertido se veía igual que uno válido.
                    Anulado, FechaAnulacion, UsuarioAnulacion, MotivoAnulacion
             FROM   CRM.VW_HistorialOportunidades
-            WHERE  NumeroCotizacion = @Num
+            -- [v12] RENDIMIENTO — Antes el filtro era NumeroCotizacion.
+            --
+            -- VW_HistorialOportunidades calcula un ROW_NUMBER() particionado
+            -- por IdOportunidad ANTES de unir con Oportunidad y Cliente. Al
+            -- filtrar por NumeroCotizacion (una columna que viene del JOIN),
+            -- el motor no puede empujar el predicado dentro de la ventana y
+            -- termina numerando TODOS los movimientos de la base en cada
+            -- consulta de detalle.
+            --
+            -- IdOportunidad sí es la columna de particionado, así que el
+            -- filtro se empuja hasta el índice IX_Movimiento_Ultimo y solo se
+            -- recorren los movimientos de esa oportunidad.
+            WHERE  IdOportunidad = @IdOportunidad
             ORDER  BY FechaRegistro DESC",
-            new { Num = numeroCotizacion.ToUpper().Trim() });
+            new { IdOportunidad = cabecera.IdOportunidad });
 
         return new { Cabecera = cabecera, Historial = historial };
     }
